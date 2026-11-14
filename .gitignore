@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+venv/
+env/
+.venv/
+
+# Large raw datasets
+*.zip
+*.pcapng
+*.pdf
+Data Pack/
+6af458274c1e8_data_pack/
+ball_by_ball.csv
+
+# OS
+.DS_Store
+Thumbs.db

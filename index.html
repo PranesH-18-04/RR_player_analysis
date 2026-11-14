@@ -1,0 +1,2523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SupeRR Selector: Pressure Analysis</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  
+  <style>
+    :root {
+      --rr-pink: #E91E8C;
+      --rr-pink-hover: #D8157D;
+      --rr-pink-light: #FDE4F2;
+      --rr-deep-blue: #1A3C8F;
+      --rr-deep-blue-dark: #12285E;
+      --rr-deep-blue-light: #2A4FA8;
+      --rr-bg-light: #EAF2FB;
+      --rr-card-bg: #FFFFFF;
+      --rr-text-dark: #14213D;
+      --rr-text-muted: #5A6A85;
+      --rr-border: #D0E0F5;
+      --rr-border-light: #E2ECF8;
+      --rr-success: #10B981;
+      --rr-warning: #F59E0B;
+      --shadow-sm: 0 2px 8px rgba(26, 60, 143, 0.06);
+      --shadow-md: 0 4px 16px rgba(26, 60, 143, 0.08);
+      --shadow-lg: 0 10px 28px rgba(26, 60, 143, 0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--rr-bg-light);
+      color: var(--rr-text-dark);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    header.rr-header {
+      background: linear-gradient(135deg, var(--rr-deep-blue-dark) 0%, var(--rr-deep-blue) 70%, #224EB8 100%);
+      color: #FFFFFF;
+      padding: 1.75rem 2rem;
+      border-bottom: 4px solid var(--rr-pink);
+      box-shadow: 0 4px 20px rgba(18, 40, 94, 0.25);
+    }
+
+    .header-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .rr-badge {
+      width: 52px;
+      height: 52px;
+      background: var(--rr-pink);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(233, 30, 140, 0.35);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      letter-spacing: -0.5px;
+    }
+
+    .title-group h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .title-group h1 span.pink-accent {
+      color: var(--rr-pink);
+      background: -webkit-linear-gradient(45deg, #FF66B2, var(--rr-pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .title-group p.subtitle {
+      font-size: 0.95rem;
+      color: #CADDF5;
+      font-weight: 400;
+      margin-top: 0.2rem;
+    }
+
+    .header-tag {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .header-tag .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--rr-pink);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--rr-pink);
+    }
+
+    /* Main Container */
+    main.main-content {
+      max-width: 1280px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    /* Card Base */
+    .card {
+      background: var(--rr-card-bg);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--rr-border-light);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Selector Card */
+    .selector-card {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background: #FFFFFF;
+      border-top: 4px solid var(--rr-deep-blue);
+    }
+
+    .selector-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .selector-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--rr-deep-blue);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .selector-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .role-toggles {
+      display: inline-flex;
+      background: var(--rr-bg-light);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--rr-border);
+    }
+
+    .role-btn {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+      background: transparent;
+      border: none;
+      color: var(--rr-text-muted);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .role-btn.active {
+      background: var(--rr-deep-blue);
+      color: #FFFFFF;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .role-btn.active.pink-tab {
+      background: var(--rr-pink);
+    }
+
+    .select-dropdown-wrapper {
+      flex: 1;
+      min-width: 280px;
+      position: relative;
+    }
+
+    select.player-select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--rr-text-dark);
+      background-color: #FFFFFF;
+      border: 2px solid var(--rr-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    select.player-select:focus {
+      border-color: var(--rr-pink);
+      box-shadow: 0 0 0 3px rgba(233, 30, 140, 0.15);
+    }
+
+    /* Player Profile Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Profile Card */
+    .profile-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1.25rem;
+      border-left: 5px solid var(--rr-pink);
+    }
+
+    .profile-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .player-name-large {
+      font-size: 1.7rem;
+      font-weight: 800;
+      color: var(--rr-deep-blue);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .role-pill {
+      display: inline-block;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .role-pill.batter {
+      background: var(--rr-pink-light);
+      color: var(--rr-pink);
+      border: 1px solid rgba(233, 30, 140, 0.3);
+    }
+
+    .role-pill.bowler {
+      background: #DCE8FA;
+      color: var(--rr-deep-blue);
+      border: 1px solid rgba(26, 60, 143, 0.3);
+    }
+
+    .stat-pills-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.85rem;
+      margin-top: 0.5rem;
+    }
+
+    .stat-box {
+      background: var(--rr-bg-light);
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--rr-border);
+    }
+
+    .stat-box-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--rr-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-box-val {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--rr-text-dark);
+      margin-top: 0.2rem;
+    }
+
+    .sample-status-banner {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .sample-status-banner.adequate {
+      background-color: #E8F8F2;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+    }
+
+    .sample-status-banner.warning {
+      background-color: var(--rr-pink-light);
+      color: #9D174D;
+      border: 1px solid #FBCFE8;
+    }
+
+    .sample-icon {
+      font-size: 1.1rem;
+    }
+
+    /* Difference Indicator Card */
+    .diff-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 1.25rem;
+      background: linear-gradient(180deg, #FFFFFF 0%, #F9FBFE 100%);
+      border-left: 5px solid var(--rr-deep-blue);
+    }
+
+    .diff-card-header {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--rr-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .diff-display-area {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .diff-number {
+      font-size: 3.25rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 1;
+      font-feature-settings: 'tnum';
+    }
+
+    .diff-number.pink-fav {
+      color: var(--rr-pink);
+    }
+
+    .diff-number.blue-unfav {
+      color: var(--rr-deep-blue);
+    }
+
+    .diff-unit {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--rr-text-muted);
+    }
+
+    .summary-text-panel {
+      background: #FFFFFF;
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--rr-border);
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--rr-text-dark);
+      line-height: 1.45;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Sample-Size Note Card */
+    .note-card {
+      grid-column: 1 / -1;
+      background: #F4F8FD;
+      border: 1px solid var(--rr-border);
+      border-left: 4px solid var(--rr-deep-blue);
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      border-radius: var(--radius-md);
+    }
+
+    .note-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--rr-deep-blue);
+      color: #FFFFFF;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .note-text {
+      font-size: 0.92rem;
+      color: var(--rr-text-dark);
+      font-weight: 500;
+    }
+
+    /* Chart Section */
+    .chart-card {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .chart-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--rr-deep-blue);
+    }
+
+    .chart-legend-custom {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .legend-box {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+    }
+
+    .legend-box.normal {
+      background-color: var(--rr-deep-blue);
+    }
+
+    .legend-box.pressure {
+      background-color: var(--rr-pink);
+    }
+
+    .chart-container-rel {
+      position: relative;
+      height: 340px;
+      width: 100%;
+    }
+
+    /* All-Players Table Section */
+    .table-section {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .table-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .table-title-group h2 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--rr-deep-blue);
+    }
+
+    .table-title-group p {
+      font-size: 0.88rem;
+      color: var(--rr-text-muted);
+    }
+
+    .table-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .table-search-input {
+      padding: 0.55rem 0.95rem;
+      font-size: 0.88rem;
+      border: 1px solid var(--rr-border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      min-width: 220px;
+      font-family: inherit;
+    }
+
+    .table-search-input:focus {
+      border-color: var(--rr-pink);
+      box-shadow: 0 0 0 2px rgba(233, 30, 140, 0.12);
+    }
+
+    .table-wrapper {
+      background: #FFFFFF;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--rr-border);
+      overflow-x: auto;
+      box-shadow: var(--shadow-sm);
+    }
+
+    table.rr-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    table.rr-table th {
+      background-color: var(--rr-deep-blue);
+      color: #FFFFFF;
+      padding: 0.85rem 1rem;
+      font-weight: 700;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      transition: background-color 0.15s ease;
+    }
+
+    table.rr-table th:hover {
+      background-color: var(--rr-deep-blue-dark);
+    }
+
+    table.rr-table th .sort-arrow {
+      margin-left: 0.35rem;
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    table.rr-table td {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--rr-border-light);
+      color: var(--rr-text-dark);
+      white-space: nowrap;
+      font-feature-settings: 'tnum';
+    }
+
+    /* Alternating light blue row shading */
+    table.rr-table tbody tr:nth-child(even) {
+      background-color: var(--rr-bg-light);
+    }
+
+    table.rr-table tbody tr:nth-child(odd) {
+      background-color: #FFFFFF;
+    }
+
+    table.rr-table tbody tr:hover {
+      background-color: #FCE8F3 !important;
+      cursor: pointer;
+    }
+
+    table.rr-table tbody tr.selected-row {
+      background-color: #FCE0F0 !important;
+      font-weight: 600;
+      border-left: 4px solid var(--rr-pink);
+    }
+
+    .table-badge-fav {
+      color: var(--rr-pink);
+      font-weight: 700;
+    }
+
+    .table-badge-unfav {
+      color: var(--rr-deep-blue);
+      font-weight: 600;
+    }
+
+    /* Footer */
+    footer.rr-footer {
+      background-color: var(--rr-deep-blue-dark);
+      color: #CADDF5;
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.88rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: 3rem;
+    }
+
+    footer.rr-footer p {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    footer.rr-footer .footer-dot {
+      color: var(--rr-pink);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="rr-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="rr-badge">RR</div>
+        <div class="title-group">
+          <h1>SupeRR Selector: <span class="pink-accent">Pressure Analysis</span></h1>
+          <p class="subtitle">Rajasthan Royals players, IPL and T20I, 2022 onward.</p>
+        </div>
+      </div>
+      <div class="header-tag">
+        <span class="pulse-dot"></span>
+        RR Decision Science & Talent ID
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Player Selector Card -->
+    <section class="card selector-card" aria-label="Player Selection">
+      <div class="selector-header">
+        <div class="selector-title">
+          <span>Choose Rajasthan Royals Player</span>
+        </div>
+        <div class="role-toggles">
+          <button id="filterAllBtn" class="role-btn active" onclick="setDropdownRoleFilter('all')">All RR Players</button>
+          <button id="filterBattersBtn" class="role-btn" onclick="setDropdownRoleFilter('batters')">Batters Only</button>
+          <button id="filterBowlersBtn" class="role-btn" onclick="setDropdownRoleFilter('bowlers')">Bowlers Only</button>
+        </div>
+      </div>
+
+      <div class="selector-controls">
+        <div class="select-dropdown-wrapper">
+          <select id="playerSelect" class="player-select" onchange="handlePlayerSelectChange()">
+            <!-- Dynamically populated -->
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Player Profile & Metrics Grid -->
+    <section class="dashboard-grid" aria-label="Player Performance">
+
+      <!-- Player Profile Card -->
+      <div class="card profile-card">
+        <div>
+          <div class="profile-top">
+            <div>
+              <h2 id="profileName" class="player-name-large">-</h2>
+              <div style="margin-top: 0.4rem;">
+                <span id="profileRole" class="role-pill batter">Batter</span>
+              </div>
+            </div>
+            <div id="sampleBadge" class="sample-status-banner adequate">
+              <span class="sample-icon">✓</span>
+              <span id="sampleBadgeText">Sufficient Sample</span>
+            </div>
+          </div>
+
+          <div class="stat-pills-row">
+            <div class="stat-box">
+              <div class="stat-box-label">Pressure Balls</div>
+              <div id="statPressureBalls" class="stat-box-val">-</div>
+            </div>
+            <div class="stat-box">
+              <div id="statInnsOversLabel" class="stat-box-label">Pressure Innings</div>
+              <div id="statInnsOversVal" class="stat-box-val">-</div>
+            </div>
+            <div class="stat-box">
+              <div id="statNormalMetricLabel" class="stat-box-label">Normal Metric</div>
+              <div id="statNormalMetricVal" class="stat-box-val">-</div>
+            </div>
+            <div class="stat-box">
+              <div id="statPressureMetricLabel" class="stat-box-label">Pressure Metric</div>
+              <div id="statPressureMetricVal" class="stat-box-val">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Difference Indicator Card -->
+      <div class="card diff-card">
+        <div>
+          <div class="diff-card-header" id="diffHeaderTitle">Pressure vs Normal Differential</div>
+          <div class="diff-display-area" style="margin-top: 0.65rem;">
+            <span id="diffNumber" class="diff-number pink-fav">-</span>
+            <span id="diffUnit" class="diff-unit">Diff</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="diff-card-header" style="margin-bottom: 0.35rem;">Key Performance Takeaway</div>
+          <div id="summaryText" class="summary-text-panel">
+            Loading summary...
+          </div>
+        </div>
+      </div>
+
+      <!-- Sample-Size Note Card -->
+      <div class="card note-card">
+        <div class="note-badge">Reliability Context</div>
+        <div id="reliabilityNoteText" class="note-text">-</div>
+      </div>
+
+      <!-- Normal vs Pressure Comparison Chart -->
+      <div class="card chart-card">
+        <div class="chart-header">
+          <h3 id="chartTitle" class="chart-title">Normal vs. Pressure Comparison</h3>
+          <div class="chart-legend-custom">
+            <div class="legend-item">
+              <div class="legend-box normal"></div>
+              <span>Normal Match Situation</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-box pressure"></div>
+              <span>High-Pressure Situation</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-container-rel">
+          <canvas id="comparisonChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- All-Players Table Section -->
+    <section class="table-section" aria-label="All Players Summary">
+      <div class="table-header-row">
+        <div class="table-title-group">
+          <h2>Rajasthan Royals Player Roster</h2>
+          <p>Click any player to inspect detailed profile, metrics, and pressure curves.</p>
+        </div>
+        <div class="table-actions">
+          <div class="role-toggles">
+            <button id="tabBatters" class="role-btn active pink-tab" onclick="setTableMode('batters')">Batters (<span id="countBatters">0</span>)</button>
+            <button id="tabBowlers" class="role-btn" onclick="setTableMode('bowlers')">Bowlers (<span id="countBowlers">0</span>)</button>
+          </div>
+          <input type="text" id="tableSearch" class="table-search-input" placeholder="Search RR players..." oninput="handleTableSearch()">
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="rr-table" id="playersTable">
+          <thead id="tableHead">
+            <!-- Injected via JavaScript -->
+          </thead>
+          <tbody id="tableBody">
+            <!-- Injected via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="rr-footer">
+    <p>
+      <span>Data pack for competition use only. Not for publication.</span>
+      <span class="footer-dot">•</span>
+      <span>Rajasthan Royals • SupeRR Selector Season 2</span>
+    </p>
+  </footer>
+
+  <!-- ========================================================================= -->
+  <!-- JAVASCRIPT LOGIC & DATA STORAGE                                           -->
+  <!-- ========================================================================= -->
+  <script>
+    /* =========================================================================
+       1. DATA ARRAYS (Loaded directly from batters_pressure.csv & bowlers_pressure.csv)
+       You can easily replace the arrays below with updated CSV rows as needed.
+       ========================================================================= */
+    const MIN_SAMPLE_BALLS_BATTER = 30; // Threshold for Batters
+    const MIN_SAMPLE_BALLS_BOWLER = 24; // Threshold for Bowlers
+
+    const BATTERS_DATA = [
+  {
+    "player_name": "Abdul Basith",
+    "pressure_balls": 1,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 100.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (1 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Adam Milne",
+    "pressure_balls": 54,
+    "pressure_innings": 12,
+    "normal_strike_rate": 25.0,
+    "pressure_strike_rate": 96.3,
+    "sr_difference": 71.3,
+    "normal_boundary_pct": 0.0,
+    "pressure_boundary_pct": 9.3,
+    "reliability_note": "Moderate sample (54 balls across 12 inns). Reliable trend indicators."
+  },
+  {
+    "player_name": "Adam Zampa",
+    "pressure_balls": 50,
+    "pressure_innings": 15,
+    "normal_strike_rate": 66.7,
+    "pressure_strike_rate": 60.0,
+    "sr_difference": -6.7,
+    "normal_boundary_pct": 0.0,
+    "pressure_boundary_pct": 4.0,
+    "reliability_note": "Moderate sample (50 balls across 15 inns). Reliable trend indicators."
+  },
+  {
+    "player_name": "Akash Madhwal",
+    "pressure_balls": 14,
+    "pressure_innings": 2,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 57.1,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (14 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Ashok Sharma",
+    "pressure_balls": 5,
+    "pressure_innings": 2,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 20.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (5 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Avesh Khan",
+    "pressure_balls": 52,
+    "pressure_innings": 19,
+    "normal_strike_rate": 100.0,
+    "pressure_strike_rate": 150.0,
+    "sr_difference": 50.0,
+    "normal_boundary_pct": 12.5,
+    "pressure_boundary_pct": 23.1,
+    "reliability_note": "Moderate sample (52 balls across 19 inns). Reliable trend indicators."
+  },
+  {
+    "player_name": "Brijesh Sharma",
+    "pressure_balls": 4,
+    "pressure_innings": 2,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 50.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (4 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Corbin Bosch",
+    "pressure_balls": 108,
+    "pressure_innings": 12,
+    "normal_strike_rate": 69.4,
+    "pressure_strike_rate": 135.2,
+    "sr_difference": 65.8,
+    "normal_boundary_pct": 2.8,
+    "pressure_boundary_pct": 16.7,
+    "reliability_note": "Robust sample (108 balls across 12 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Daryl Mitchell",
+    "pressure_balls": 540,
+    "pressure_innings": 39,
+    "normal_strike_rate": 131.2,
+    "pressure_strike_rate": 156.1,
+    "sr_difference": 24.9,
+    "normal_boundary_pct": 13.9,
+    "pressure_boundary_pct": 18.7,
+    "reliability_note": "Robust sample (540 balls across 39 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Dasun Shanaka",
+    "pressure_balls": 527,
+    "pressure_innings": 46,
+    "normal_strike_rate": 113.7,
+    "pressure_strike_rate": 144.2,
+    "sr_difference": 30.5,
+    "normal_boundary_pct": 12.2,
+    "pressure_boundary_pct": 19.2,
+    "reliability_note": "Robust sample (527 balls across 46 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Devdutt Padikkal",
+    "pressure_balls": 351,
+    "pressure_innings": 23,
+    "normal_strike_rate": 134.3,
+    "pressure_strike_rate": 131.6,
+    "sr_difference": -2.7,
+    "normal_boundary_pct": 19.6,
+    "pressure_boundary_pct": 19.1,
+    "reliability_note": "Robust sample (351 balls across 23 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Dhruv Jurel",
+    "pressure_balls": 494,
+    "pressure_innings": 39,
+    "normal_strike_rate": 139.0,
+    "pressure_strike_rate": 151.0,
+    "sr_difference": 12.0,
+    "normal_boundary_pct": 20.1,
+    "pressure_boundary_pct": 19.4,
+    "reliability_note": "Robust sample (494 balls across 39 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Donovan Ferreira",
+    "pressure_balls": 217,
+    "pressure_innings": 21,
+    "normal_strike_rate": 128.5,
+    "pressure_strike_rate": 177.9,
+    "sr_difference": 49.4,
+    "normal_boundary_pct": 14.6,
+    "pressure_boundary_pct": 26.3,
+    "reliability_note": "Robust sample (217 balls across 21 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "FazalHaq Farooqi",
+    "pressure_balls": 48,
+    "pressure_innings": 12,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 33.3,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Moderate sample (48 balls across 12 inns). Reliable trend indicators."
+  },
+  {
+    "player_name": "Jason Holder",
+    "pressure_balls": 373,
+    "pressure_innings": 53,
+    "normal_strike_rate": 122.8,
+    "pressure_strike_rate": 140.2,
+    "sr_difference": 17.4,
+    "normal_boundary_pct": 16.3,
+    "pressure_boundary_pct": 17.4,
+    "reliability_note": "Robust sample (373 balls across 53 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Jimmy Neesham",
+    "pressure_balls": 259,
+    "pressure_innings": 30,
+    "normal_strike_rate": 120.1,
+    "pressure_strike_rate": 136.3,
+    "sr_difference": 16.2,
+    "normal_boundary_pct": 13.4,
+    "pressure_boundary_pct": 17.4,
+    "reliability_note": "Robust sample (259 balls across 30 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Joe Root",
+    "pressure_balls": 15,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 66.7,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 6.7,
+    "reliability_note": "Small sample warning (15 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Jofra Archer",
+    "pressure_balls": 142,
+    "pressure_innings": 28,
+    "normal_strike_rate": 111.1,
+    "pressure_strike_rate": 124.6,
+    "sr_difference": 13.5,
+    "normal_boundary_pct": 11.1,
+    "pressure_boundary_pct": 14.1,
+    "reliability_note": "Robust sample (142 balls across 28 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Jos Buttler",
+    "pressure_balls": 889,
+    "pressure_innings": 64,
+    "normal_strike_rate": 145.3,
+    "pressure_strike_rate": 163.1,
+    "sr_difference": 17.8,
+    "normal_boundary_pct": 20.8,
+    "pressure_boundary_pct": 24.2,
+    "reliability_note": "Robust sample (889 balls across 64 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "KM Asif",
+    "pressure_balls": 2,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 0.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (2 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Karun Nair",
+    "pressure_balls": 89,
+    "pressure_innings": 5,
+    "normal_strike_rate": 130.8,
+    "pressure_strike_rate": 165.2,
+    "sr_difference": 34.4,
+    "normal_boundary_pct": 20.0,
+    "pressure_boundary_pct": 28.1,
+    "reliability_note": "Robust sample (89 balls across 5 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Keshav Maharaj",
+    "pressure_balls": 66,
+    "pressure_innings": 12,
+    "normal_strike_rate": 60.0,
+    "pressure_strike_rate": 100.0,
+    "sr_difference": 40.0,
+    "normal_boundary_pct": 8.0,
+    "pressure_boundary_pct": 10.6,
+    "reliability_note": "Robust sample (66 balls across 12 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Kuldeep Sen",
+    "pressure_balls": 3,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 0.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (3 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Kumar Kartikeya Singh",
+    "pressure_balls": 18,
+    "pressure_innings": 4,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 66.7,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 5.6,
+    "reliability_note": "Small sample warning (18 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Kunal Rathore",
+    "pressure_balls": 5,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 0.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (5 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Kwena Maphaka",
+    "pressure_balls": 26,
+    "pressure_innings": 6,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 103.8,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 15.4,
+    "reliability_note": "Small sample warning (26 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Lhuan Pretorius",
+    "pressure_balls": 10,
+    "pressure_innings": 4,
+    "normal_strike_rate": 141.2,
+    "pressure_strike_rate": 70.0,
+    "sr_difference": -71.2,
+    "normal_boundary_pct": 22.1,
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (10 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Maheesh Theekshana",
+    "pressure_balls": 198,
+    "pressure_innings": 35,
+    "normal_strike_rate": 16.7,
+    "pressure_strike_rate": 64.1,
+    "sr_difference": 47.4,
+    "normal_boundary_pct": 0.0,
+    "pressure_boundary_pct": 5.1,
+    "reliability_note": "Robust sample (198 balls across 35 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Murugan Ashwin",
+    "pressure_balls": 14,
+    "pressure_innings": 4,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 85.7,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 14.3,
+    "reliability_note": "Small sample warning (14 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Nandre Burger",
+    "pressure_balls": 25,
+    "pressure_innings": 6,
+    "normal_strike_rate": 40.0,
+    "pressure_strike_rate": 88.0,
+    "sr_difference": 48.0,
+    "normal_boundary_pct": 0.0,
+    "pressure_boundary_pct": 4.0,
+    "reliability_note": "Small sample warning (25 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Nathan Coulter Nile",
+    "pressure_balls": 2,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 50.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (2 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Navdeep Saini",
+    "pressure_balls": 2,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 100.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (2 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Nitish Rana",
+    "pressure_balls": 416,
+    "pressure_innings": 26,
+    "normal_strike_rate": 134.5,
+    "pressure_strike_rate": 144.0,
+    "sr_difference": 9.5,
+    "normal_boundary_pct": 19.9,
+    "pressure_boundary_pct": 21.9,
+    "reliability_note": "Robust sample (416 balls across 26 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Obed McCoy",
+    "pressure_balls": 44,
+    "pressure_innings": 8,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 86.4,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 13.6,
+    "reliability_note": "Moderate sample (44 balls across 8 inns). Reliable trend indicators."
+  },
+  {
+    "player_name": "Prasidh Krishna",
+    "pressure_balls": 22,
+    "pressure_innings": 5,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 63.6,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 4.5,
+    "reliability_note": "Small sample warning (22 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Rassie van der Dussen",
+    "pressure_balls": 215,
+    "pressure_innings": 13,
+    "normal_strike_rate": 93.2,
+    "pressure_strike_rate": 136.3,
+    "sr_difference": 43.1,
+    "normal_boundary_pct": 8.7,
+    "pressure_boundary_pct": 16.3,
+    "reliability_note": "Robust sample (215 balls across 13 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Ravi Bishnoi",
+    "pressure_balls": 86,
+    "pressure_innings": 26,
+    "normal_strike_rate": 76.9,
+    "pressure_strike_rate": 97.7,
+    "sr_difference": 20.8,
+    "normal_boundary_pct": 15.4,
+    "pressure_boundary_pct": 11.6,
+    "reliability_note": "Robust sample (86 balls across 26 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Ravi Singh",
+    "pressure_balls": 0,
+    "pressure_innings": 0,
+    "normal_strike_rate": 200.0,
+    "pressure_strike_rate": "n/a",
+    "sr_difference": "n/a",
+    "normal_boundary_pct": 50.0,
+    "pressure_boundary_pct": "n/a",
+    "reliability_note": "Small sample warning (0 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Ravichandran Ashwin",
+    "pressure_balls": 150,
+    "pressure_innings": 27,
+    "normal_strike_rate": 119.6,
+    "pressure_strike_rate": 135.3,
+    "sr_difference": 15.7,
+    "normal_boundary_pct": 14.0,
+    "pressure_boundary_pct": 15.3,
+    "reliability_note": "Robust sample (150 balls across 27 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Ravindra Jadeja",
+    "pressure_balls": 687,
+    "pressure_innings": 58,
+    "normal_strike_rate": 111.7,
+    "pressure_strike_rate": 137.1,
+    "sr_difference": 25.4,
+    "normal_boundary_pct": 11.4,
+    "pressure_boundary_pct": 15.3,
+    "reliability_note": "Robust sample (687 balls across 58 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Riyan Parag",
+    "pressure_balls": 563,
+    "pressure_innings": 51,
+    "normal_strike_rate": 137.4,
+    "pressure_strike_rate": 154.4,
+    "sr_difference": 17.0,
+    "normal_boundary_pct": 16.4,
+    "pressure_boundary_pct": 21.7,
+    "reliability_note": "Robust sample (563 balls across 51 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Rovman Powell",
+    "pressure_balls": 982,
+    "pressure_innings": 78,
+    "normal_strike_rate": 116.4,
+    "pressure_strike_rate": 154.1,
+    "sr_difference": 37.7,
+    "normal_boundary_pct": 13.7,
+    "pressure_boundary_pct": 21.3,
+    "reliability_note": "Robust sample (982 balls across 78 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Sam Curran",
+    "pressure_balls": 505,
+    "pressure_innings": 50,
+    "normal_strike_rate": 113.9,
+    "pressure_strike_rate": 133.1,
+    "sr_difference": 19.2,
+    "normal_boundary_pct": 11.9,
+    "pressure_boundary_pct": 15.2,
+    "reliability_note": "Robust sample (505 balls across 50 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Sandeep Sharma",
+    "pressure_balls": 13,
+    "pressure_innings": 3,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 61.5,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (13 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Sanju Samson",
+    "pressure_balls": 697,
+    "pressure_innings": 56,
+    "normal_strike_rate": 147.0,
+    "pressure_strike_rate": 156.4,
+    "sr_difference": 9.4,
+    "normal_boundary_pct": 21.5,
+    "pressure_boundary_pct": 23.2,
+    "reliability_note": "Robust sample (697 balls across 56 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Shimron Hetmyer",
+    "pressure_balls": 875,
+    "pressure_innings": 73,
+    "normal_strike_rate": 132.5,
+    "pressure_strike_rate": 150.3,
+    "sr_difference": 17.8,
+    "normal_boundary_pct": 16.9,
+    "pressure_boundary_pct": 20.3,
+    "reliability_note": "Robust sample (875 balls across 73 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Shubham Dubey",
+    "pressure_balls": 129,
+    "pressure_innings": 15,
+    "normal_strike_rate": 94.7,
+    "pressure_strike_rate": 156.6,
+    "sr_difference": 61.9,
+    "normal_boundary_pct": 10.5,
+    "pressure_boundary_pct": 21.7,
+    "reliability_note": "Robust sample (129 balls across 15 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Sushant Mishra",
+    "pressure_balls": 3,
+    "pressure_innings": 1,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 33.3,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (3 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Tanush Kotian",
+    "pressure_balls": 0,
+    "pressure_innings": 0,
+    "normal_strike_rate": 75.0,
+    "pressure_strike_rate": "n/a",
+    "sr_difference": "n/a",
+    "normal_boundary_pct": 9.4,
+    "pressure_boundary_pct": "n/a",
+    "reliability_note": "Small sample warning (0 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Tom Kohler",
+    "pressure_balls": 17,
+    "pressure_innings": 2,
+    "normal_strike_rate": 108.1,
+    "pressure_strike_rate": 47.1,
+    "sr_difference": -61.0,
+    "normal_boundary_pct": 18.9,
+    "pressure_boundary_pct": 5.9,
+    "reliability_note": "Small sample warning (17 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Trent Boult",
+    "pressure_balls": 77,
+    "pressure_innings": 21,
+    "normal_strike_rate": 100.0,
+    "pressure_strike_rate": 118.2,
+    "sr_difference": 18.2,
+    "normal_boundary_pct": 14.3,
+    "pressure_boundary_pct": 11.7,
+    "reliability_note": "Robust sample (77 balls across 21 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Tushar Deshpande",
+    "pressure_balls": 26,
+    "pressure_innings": 8,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 126.9,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 11.5,
+    "reliability_note": "Small sample warning (26 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Vaibhav Sooryavanshi",
+    "pressure_balls": 200,
+    "pressure_innings": 16,
+    "normal_strike_rate": 211.3,
+    "pressure_strike_rate": 211.5,
+    "sr_difference": 0.2,
+    "normal_boundary_pct": 35.6,
+    "pressure_boundary_pct": 37.0,
+    "reliability_note": "Robust sample (200 balls across 16 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Wanindu Hasaranga",
+    "pressure_balls": 292,
+    "pressure_innings": 52,
+    "normal_strike_rate": 122.6,
+    "pressure_strike_rate": 120.9,
+    "sr_difference": -1.7,
+    "normal_boundary_pct": 16.1,
+    "pressure_boundary_pct": 14.7,
+    "reliability_note": "Robust sample (292 balls across 52 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Yashasvi Jaiswal",
+    "pressure_balls": 548,
+    "pressure_innings": 34,
+    "normal_strike_rate": 148.6,
+    "pressure_strike_rate": 159.7,
+    "sr_difference": 11.1,
+    "normal_boundary_pct": 23.9,
+    "pressure_boundary_pct": 27.4,
+    "reliability_note": "Robust sample (548 balls across 34 inns). Highly statistically reliable."
+  },
+  {
+    "player_name": "Yudhvir Singh",
+    "pressure_balls": 16,
+    "pressure_innings": 4,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 137.5,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 18.8,
+    "reliability_note": "Small sample warning (16 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Yuzvendra Chahal",
+    "pressure_balls": 10,
+    "pressure_innings": 3,
+    "normal_strike_rate": "n/a",
+    "pressure_strike_rate": 60.0,
+    "sr_difference": "n/a",
+    "normal_boundary_pct": "n/a",
+    "pressure_boundary_pct": 0.0,
+    "reliability_note": "Small sample warning (10 balls). High variance; interpret with caution."
+  }
+];
+    const BOWLERS_DATA = [
+  {
+    "player_name": "Adam Milne",
+    "pressure_balls": 287,
+    "pressure_overs": 45.2,
+    "normal_economy": 8.5,
+    "pressure_economy": 10.34,
+    "economy_difference": 1.84,
+    "normal_dot_pct": 45.7,
+    "pressure_dot_pct": 32.8,
+    "wickets_pressure": 22,
+    "reliability_note": "Robust sample (287 balls, 45.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Adam Zampa",
+    "pressure_balls": 554,
+    "pressure_overs": 91.2,
+    "normal_economy": 8.43,
+    "pressure_economy": 8.31,
+    "economy_difference": -0.12,
+    "normal_dot_pct": 28.9,
+    "pressure_dot_pct": 30.9,
+    "wickets_pressure": 48,
+    "reliability_note": "Robust sample (554 balls, 91.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Akash Madhwal",
+    "pressure_balls": 221,
+    "pressure_overs": 33.8,
+    "normal_economy": 10.28,
+    "pressure_economy": 9.84,
+    "economy_difference": -0.44,
+    "normal_dot_pct": 22.6,
+    "pressure_dot_pct": 31.7,
+    "wickets_pressure": 20,
+    "reliability_note": "Robust sample (221 balls, 33.8 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Ashok Sharma",
+    "pressure_balls": 97,
+    "pressure_overs": 15.0,
+    "normal_economy": 8.75,
+    "pressure_economy": 10.2,
+    "economy_difference": 1.45,
+    "normal_dot_pct": 44.4,
+    "pressure_dot_pct": 33.0,
+    "wickets_pressure": 6,
+    "reliability_note": "Robust sample (97 balls, 15.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Avesh Khan",
+    "pressure_balls": 1063,
+    "pressure_overs": 168.0,
+    "normal_economy": 9.03,
+    "pressure_economy": 10.01,
+    "economy_difference": 0.98,
+    "normal_dot_pct": 37.1,
+    "pressure_dot_pct": 30.1,
+    "wickets_pressure": 63,
+    "reliability_note": "Robust sample (1063 balls, 168.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Brijesh Sharma",
+    "pressure_balls": 207,
+    "pressure_overs": 32.2,
+    "normal_economy": 8.71,
+    "pressure_economy": 10.2,
+    "economy_difference": 1.49,
+    "normal_dot_pct": 31.1,
+    "pressure_dot_pct": 27.1,
+    "wickets_pressure": 10,
+    "reliability_note": "Robust sample (207 balls, 32.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Corbin Bosch",
+    "pressure_balls": 214,
+    "pressure_overs": 34.0,
+    "normal_economy": 9.59,
+    "pressure_economy": 7.82,
+    "economy_difference": -1.77,
+    "normal_dot_pct": 37.6,
+    "pressure_dot_pct": 43.5,
+    "wickets_pressure": 20,
+    "reliability_note": "Robust sample (214 balls, 34.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Daryl Mitchell",
+    "pressure_balls": 41,
+    "pressure_overs": 6.3,
+    "normal_economy": 12.14,
+    "pressure_economy": 10.74,
+    "economy_difference": -1.4,
+    "normal_dot_pct": 11.1,
+    "pressure_dot_pct": 24.4,
+    "wickets_pressure": 3,
+    "reliability_note": "Moderate sample (41 balls, 6.3 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Dasun Shanaka",
+    "pressure_balls": 229,
+    "pressure_overs": 35.5,
+    "normal_economy": 8.2,
+    "pressure_economy": 9.55,
+    "economy_difference": 1.35,
+    "normal_dot_pct": 28.8,
+    "pressure_dot_pct": 24.5,
+    "wickets_pressure": 15,
+    "reliability_note": "Robust sample (229 balls, 35.5 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Donovan Ferreira",
+    "pressure_balls": 31,
+    "pressure_overs": 5.0,
+    "normal_economy": 8.43,
+    "pressure_economy": 13.2,
+    "economy_difference": 4.77,
+    "normal_dot_pct": 28.6,
+    "pressure_dot_pct": 16.1,
+    "wickets_pressure": 2,
+    "reliability_note": "Moderate sample (31 balls, 5.0 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "FazalHaq Farooqi",
+    "pressure_balls": 477,
+    "pressure_overs": 76.7,
+    "normal_economy": 7.97,
+    "pressure_economy": 8.5,
+    "economy_difference": 0.53,
+    "normal_dot_pct": 42.7,
+    "pressure_dot_pct": 30.8,
+    "wickets_pressure": 27,
+    "reliability_note": "Robust sample (477 balls, 76.7 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Jason Holder",
+    "pressure_balls": 1110,
+    "pressure_overs": 174.0,
+    "normal_economy": 7.76,
+    "pressure_economy": 10.04,
+    "economy_difference": 2.28,
+    "normal_dot_pct": 35.6,
+    "pressure_dot_pct": 27.2,
+    "wickets_pressure": 73,
+    "reliability_note": "Robust sample (1110 balls, 174.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Jimmy Neesham",
+    "pressure_balls": 209,
+    "pressure_overs": 33.2,
+    "normal_economy": 8.5,
+    "pressure_economy": 9.89,
+    "economy_difference": 1.39,
+    "normal_dot_pct": 32.3,
+    "pressure_dot_pct": 33.5,
+    "wickets_pressure": 20,
+    "reliability_note": "Robust sample (209 balls, 33.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Joe Root",
+    "pressure_balls": 0,
+    "pressure_overs": 0.0,
+    "normal_economy": 7.0,
+    "pressure_economy": "n/a",
+    "economy_difference": "n/a",
+    "normal_dot_pct": 8.3,
+    "pressure_dot_pct": "n/a",
+    "wickets_pressure": 0,
+    "reliability_note": "Small sample warning (0 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Jofra Archer",
+    "pressure_balls": 604,
+    "pressure_overs": 97.2,
+    "normal_economy": 8.78,
+    "pressure_economy": 9.37,
+    "economy_difference": 0.59,
+    "normal_dot_pct": 41.0,
+    "pressure_dot_pct": 35.9,
+    "wickets_pressure": 54,
+    "reliability_note": "Robust sample (604 balls, 97.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "KM Asif",
+    "pressure_balls": 39,
+    "pressure_overs": 6.2,
+    "normal_economy": 9.88,
+    "pressure_economy": 9.57,
+    "economy_difference": -0.31,
+    "normal_dot_pct": 30.8,
+    "pressure_dot_pct": 30.8,
+    "wickets_pressure": 0,
+    "reliability_note": "Moderate sample (39 balls, 6.2 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Keshav Maharaj",
+    "pressure_balls": 176,
+    "pressure_overs": 28.3,
+    "normal_economy": 8.72,
+    "pressure_economy": 8.61,
+    "economy_difference": -0.11,
+    "normal_dot_pct": 31.7,
+    "pressure_dot_pct": 30.7,
+    "wickets_pressure": 10,
+    "reliability_note": "Robust sample (176 balls, 28.3 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Kuldeep Sen",
+    "pressure_balls": 139,
+    "pressure_overs": 21.7,
+    "normal_economy": 8.59,
+    "pressure_economy": 10.52,
+    "economy_difference": 1.93,
+    "normal_dot_pct": 35.3,
+    "pressure_dot_pct": 30.2,
+    "wickets_pressure": 8,
+    "reliability_note": "Robust sample (139 balls, 21.7 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Kuldip Yadav",
+    "pressure_balls": 42,
+    "pressure_overs": 7.0,
+    "normal_economy": "n/a",
+    "pressure_economy": 9.71,
+    "economy_difference": "n/a",
+    "normal_dot_pct": "n/a",
+    "pressure_dot_pct": 21.4,
+    "wickets_pressure": 2,
+    "reliability_note": "Moderate sample (42 balls, 7.0 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Kumar Kartikeya Singh",
+    "pressure_balls": 68,
+    "pressure_overs": 11.0,
+    "normal_economy": 8.22,
+    "pressure_economy": 10.09,
+    "economy_difference": 1.87,
+    "normal_dot_pct": 29.3,
+    "pressure_dot_pct": 29.4,
+    "wickets_pressure": 3,
+    "reliability_note": "Robust sample (68 balls, 11.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Kwena Maphaka",
+    "pressure_balls": 130,
+    "pressure_overs": 19.7,
+    "normal_economy": 10.64,
+    "pressure_economy": 10.63,
+    "economy_difference": -0.01,
+    "normal_dot_pct": 33.0,
+    "pressure_dot_pct": 26.9,
+    "wickets_pressure": 10,
+    "reliability_note": "Robust sample (130 balls, 19.7 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Maheesh Theekshana",
+    "pressure_balls": 866,
+    "pressure_overs": 139.8,
+    "normal_economy": 7.67,
+    "pressure_economy": 7.79,
+    "economy_difference": 0.12,
+    "normal_dot_pct": 33.7,
+    "pressure_dot_pct": 31.5,
+    "wickets_pressure": 49,
+    "reliability_note": "Robust sample (866 balls, 139.8 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Murugan Ashwin",
+    "pressure_balls": 91,
+    "pressure_overs": 15.2,
+    "normal_economy": 9.28,
+    "pressure_economy": 7.52,
+    "economy_difference": -1.76,
+    "normal_dot_pct": 30.1,
+    "pressure_dot_pct": 37.4,
+    "wickets_pressure": 6,
+    "reliability_note": "Robust sample (91 balls, 15.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Nandre Burger",
+    "pressure_balls": 265,
+    "pressure_overs": 41.3,
+    "normal_economy": 9.71,
+    "pressure_economy": 9.82,
+    "economy_difference": 0.11,
+    "normal_dot_pct": 38.4,
+    "pressure_dot_pct": 36.2,
+    "wickets_pressure": 15,
+    "reliability_note": "Robust sample (265 balls, 41.3 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Nathan Coulter Nile",
+    "pressure_balls": 20,
+    "pressure_overs": 3.2,
+    "normal_economy": "n/a",
+    "pressure_economy": 15.16,
+    "economy_difference": "n/a",
+    "normal_dot_pct": "n/a",
+    "pressure_dot_pct": 15.0,
+    "wickets_pressure": 0,
+    "reliability_note": "Small sample warning (20 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Navdeep Saini",
+    "pressure_balls": 78,
+    "pressure_overs": 12.0,
+    "normal_economy": 10.74,
+    "pressure_economy": 12.42,
+    "economy_difference": 1.68,
+    "normal_dot_pct": 40.0,
+    "pressure_dot_pct": 21.8,
+    "wickets_pressure": 3,
+    "reliability_note": "Robust sample (78 balls, 12.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Nitish Rana",
+    "pressure_balls": 24,
+    "pressure_overs": 3.8,
+    "normal_economy": 10.85,
+    "pressure_economy": 7.83,
+    "economy_difference": -3.02,
+    "normal_dot_pct": 26.2,
+    "pressure_dot_pct": 20.8,
+    "wickets_pressure": 1,
+    "reliability_note": "Moderate sample (24 balls, 3.8 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Obed McCoy",
+    "pressure_balls": 369,
+    "pressure_overs": 56.8,
+    "normal_economy": 8.4,
+    "pressure_economy": 10.33,
+    "economy_difference": 1.93,
+    "normal_dot_pct": 37.1,
+    "pressure_dot_pct": 27.9,
+    "wickets_pressure": 27,
+    "reliability_note": "Robust sample (369 balls, 56.8 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Prasidh Krishna",
+    "pressure_balls": 698,
+    "pressure_overs": 109.5,
+    "normal_economy": 8.11,
+    "pressure_economy": 9.93,
+    "economy_difference": 1.82,
+    "normal_dot_pct": 42.0,
+    "pressure_dot_pct": 35.4,
+    "wickets_pressure": 50,
+    "reliability_note": "Robust sample (698 balls, 109.5 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Ravi Bishnoi",
+    "pressure_balls": 1307,
+    "pressure_overs": 208.7,
+    "normal_economy": 7.96,
+    "pressure_economy": 8.63,
+    "economy_difference": 0.67,
+    "normal_dot_pct": 33.6,
+    "pressure_dot_pct": 34.9,
+    "wickets_pressure": 84,
+    "reliability_note": "Robust sample (1307 balls, 208.7 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Ravichandran Ashwin",
+    "pressure_balls": 650,
+    "pressure_overs": 102.5,
+    "normal_economy": 7.83,
+    "pressure_economy": 7.91,
+    "economy_difference": 0.08,
+    "normal_dot_pct": 30.2,
+    "pressure_dot_pct": 28.0,
+    "wickets_pressure": 26,
+    "reliability_note": "Robust sample (650 balls, 102.5 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Ravindra Jadeja",
+    "pressure_balls": 591,
+    "pressure_overs": 97.2,
+    "normal_economy": 7.89,
+    "pressure_economy": 8.04,
+    "economy_difference": 0.15,
+    "normal_dot_pct": 28.1,
+    "pressure_dot_pct": 31.0,
+    "wickets_pressure": 30,
+    "reliability_note": "Robust sample (591 balls, 97.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Riyan Parag",
+    "pressure_balls": 74,
+    "pressure_overs": 11.3,
+    "normal_economy": 8.33,
+    "pressure_economy": 10.5,
+    "economy_difference": 2.17,
+    "normal_dot_pct": 26.6,
+    "pressure_dot_pct": 23.0,
+    "wickets_pressure": 6,
+    "reliability_note": "Robust sample (74 balls, 11.3 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Rovman Powell",
+    "pressure_balls": 42,
+    "pressure_overs": 6.2,
+    "normal_economy": 10.17,
+    "pressure_economy": 13.62,
+    "economy_difference": 3.45,
+    "normal_dot_pct": 17.5,
+    "pressure_dot_pct": 16.7,
+    "wickets_pressure": 1,
+    "reliability_note": "Moderate sample (42 balls, 6.2 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Sam Curran",
+    "pressure_balls": 738,
+    "pressure_overs": 115.7,
+    "normal_economy": 9.02,
+    "pressure_economy": 10.2,
+    "economy_difference": 1.18,
+    "normal_dot_pct": 31.7,
+    "pressure_dot_pct": 24.7,
+    "wickets_pressure": 43,
+    "reliability_note": "Robust sample (738 balls, 115.7 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Sandeep Sharma",
+    "pressure_balls": 546,
+    "pressure_overs": 85.7,
+    "normal_economy": 8.16,
+    "pressure_economy": 9.77,
+    "economy_difference": 1.61,
+    "normal_dot_pct": 35.7,
+    "pressure_dot_pct": 26.0,
+    "wickets_pressure": 36,
+    "reliability_note": "Robust sample (546 balls, 85.7 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Sushant Mishra",
+    "pressure_balls": 24,
+    "pressure_overs": 3.3,
+    "normal_economy": 11.67,
+    "pressure_economy": 9.6,
+    "economy_difference": -2.07,
+    "normal_dot_pct": 39.1,
+    "pressure_dot_pct": 25.0,
+    "wickets_pressure": 2,
+    "reliability_note": "Moderate sample (24 balls, 3.3 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Trent Boult",
+    "pressure_balls": 773,
+    "pressure_overs": 124.2,
+    "normal_economy": 8.26,
+    "pressure_economy": 8.71,
+    "economy_difference": 0.45,
+    "normal_dot_pct": 41.7,
+    "pressure_dot_pct": 36.4,
+    "wickets_pressure": 47,
+    "reliability_note": "Robust sample (773 balls, 124.2 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Tushar Deshpande",
+    "pressure_balls": 679,
+    "pressure_overs": 103.8,
+    "normal_economy": 8.88,
+    "pressure_economy": 10.61,
+    "economy_difference": 1.73,
+    "normal_dot_pct": 37.8,
+    "pressure_dot_pct": 29.6,
+    "wickets_pressure": 46,
+    "reliability_note": "Robust sample (679 balls, 103.8 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Vignesh Puthur",
+    "pressure_balls": 13,
+    "pressure_overs": 2.0,
+    "normal_economy": 8.5,
+    "pressure_economy": 12.0,
+    "economy_difference": 3.5,
+    "normal_dot_pct": 36.7,
+    "pressure_dot_pct": 15.4,
+    "wickets_pressure": 0,
+    "reliability_note": "Small sample warning (13 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Wanindu Hasaranga",
+    "pressure_balls": 766,
+    "pressure_overs": 126.0,
+    "normal_economy": 7.42,
+    "pressure_economy": 8.68,
+    "economy_difference": 1.26,
+    "normal_dot_pct": 35.1,
+    "pressure_dot_pct": 31.2,
+    "wickets_pressure": 56,
+    "reliability_note": "Robust sample (766 balls, 126.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Yash Punja",
+    "pressure_balls": 100,
+    "pressure_overs": 16.0,
+    "normal_economy": 9.86,
+    "pressure_economy": 8.81,
+    "economy_difference": -1.05,
+    "normal_dot_pct": 25.6,
+    "pressure_dot_pct": 25.0,
+    "wickets_pressure": 4,
+    "reliability_note": "Robust sample (100 balls, 16.0 ov). High confidence in pressure economy."
+  },
+  {
+    "player_name": "Yashasvi Jaiswal",
+    "pressure_balls": 7,
+    "pressure_overs": 1.2,
+    "normal_economy": "n/a",
+    "pressure_economy": 14.57,
+    "economy_difference": "n/a",
+    "normal_dot_pct": "n/a",
+    "pressure_dot_pct": 14.3,
+    "wickets_pressure": 0,
+    "reliability_note": "Small sample warning (7 balls). High variance; interpret with caution."
+  },
+  {
+    "player_name": "Yudhvir Singh",
+    "pressure_balls": 33,
+    "pressure_overs": 5.0,
+    "normal_economy": 10.94,
+    "pressure_economy": 11.2,
+    "economy_difference": 0.26,
+    "normal_dot_pct": 41.1,
+    "pressure_dot_pct": 24.2,
+    "wickets_pressure": 1,
+    "reliability_note": "Moderate sample (33 balls, 5.0 ov). Useful contextual indicator."
+  },
+  {
+    "player_name": "Yuzvendra Chahal",
+    "pressure_balls": 1141,
+    "pressure_overs": 182.5,
+    "normal_economy": 8.35,
+    "pressure_economy": 8.82,
+    "economy_difference": 0.47,
+    "normal_dot_pct": 27.8,
+    "pressure_dot_pct": 28.6,
+    "wickets_pressure": 85,
+    "reliability_note": "Robust sample (1141 balls, 182.5 ov). High confidence in pressure economy."
+  }
+];
+
+    // Current State
+    let currentRoleFilter = 'all'; // 'all', 'batters', 'bowlers'
+    let selectedPlayerType = 'batters'; // 'batters' or 'bowlers'
+    let selectedPlayerName = '';
+    let tableCurrentMode = 'batters'; // 'batters' or 'bowlers'
+    let tableSortColumn = 'pressure_balls';
+    let tableSortDirection = 'desc'; // 'asc' or 'desc'
+    let tableSearchQuery = '';
+    let comparisonChartInstance = null;
+
+    // Helper: Safe display of numbers or n/a
+    function formatVal(val, decimals = 1, suffix = '') {
+      if (val === null || val === undefined || val === '' || val === 'n/a' || isNaN(val)) {
+        return 'n/a';
+      }
+      return Number(val).toFixed(decimals) + suffix;
+    }
+
+    function formatNumberOrNA(val) {
+      if (val === null || val === undefined || val === '' || val === 'n/a' || isNaN(val)) {
+        return 'n/a';
+      }
+      return String(val);
+    }
+
+    // Populate Selector Dropdown
+    function initDropdown() {
+      const select = document.getElementById('playerSelect');
+      select.innerHTML = '';
+
+      const optGroupBatters = document.createElement('optgroup');
+      optGroupBatters.label = 'Rajasthan Royals Batters';
+
+      const optGroupBowlers = document.createElement('optgroup');
+      optGroupBowlers.label = 'Rajasthan Royals Bowlers';
+
+      if (currentRoleFilter === 'all' || currentRoleFilter === 'batters') {
+        BATTERS_DATA.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = `batter:${b.player_name}`;
+          opt.textContent = `${b.player_name} (Batter • ${b.pressure_balls} pressure balls)`;
+          optGroupBatters.appendChild(opt);
+        });
+        if (optGroupBatters.children.length > 0) select.appendChild(optGroupBatters);
+      }
+
+      if (currentRoleFilter === 'all' || currentRoleFilter === 'bowlers') {
+        BOWLERS_DATA.forEach(bw => {
+          const opt = document.createElement('option');
+          opt.value = `bowler:${bw.player_name}`;
+          opt.textContent = `${bw.player_name} (Bowler • ${bw.pressure_balls} pressure balls)`;
+          optGroupBowlers.appendChild(opt);
+        });
+        if (optGroupBowlers.children.length > 0) select.appendChild(optGroupBowlers);
+      }
+
+      // Default selection (e.g., Sanju Samson, Shimron Hetmyer, or first item)
+      if (!selectedPlayerName) {
+        const preferred = BATTERS_DATA.find(b => b.player_name.includes('Samson') || b.player_name.includes('Hetmyer'));
+        if (preferred) {
+          selectedPlayerType = 'batters';
+          selectedPlayerName = preferred.player_name;
+        } else if (BATTERS_DATA.length > 0) {
+          selectedPlayerType = 'batters';
+          selectedPlayerName = BATTERS_DATA[0].player_name;
+        } else if (BOWLERS_DATA.length > 0) {
+          selectedPlayerType = 'bowlers';
+          selectedPlayerName = BOWLERS_DATA[0].player_name;
+        }
+      }
+
+      // Sync select dropdown value
+      const targetVal = `${selectedPlayerType === 'batters' ? 'batter' : 'bowler'}:${selectedPlayerName}`;
+      select.value = targetVal;
+      if (!select.value && select.options.length > 0) {
+        select.selectedIndex = 0;
+        const [type, name] = select.value.split(':');
+        selectedPlayerType = type === 'batter' ? 'batters' : 'bowlers';
+        selectedPlayerName = name;
+      }
+    }
+
+    function setDropdownRoleFilter(role) {
+      currentRoleFilter = role;
+      document.getElementById('filterAllBtn').classList.toggle('active', role === 'all');
+      document.getElementById('filterBattersBtn').classList.toggle('active', role === 'batters');
+      document.getElementById('filterBowlersBtn').classList.toggle('active', role === 'bowlers');
+
+      initDropdown();
+      handlePlayerSelectChange();
+    }
+
+    function handlePlayerSelectChange() {
+      const select = document.getElementById('playerSelect');
+      if (!select.value) return;
+      const [type, name] = select.value.split(':');
+      selectedPlayerType = type === 'batter' ? 'batters' : 'bowlers';
+      selectedPlayerName = name;
+
+      updatePlayerProfileCard();
+      updateComparisonChart();
+      highlightTableRow();
+    }
+
+    // Update Player Profile & Difference Cards
+    function updatePlayerProfileCard() {
+      const isBatter = selectedPlayerType === 'batters';
+      const player = isBatter 
+        ? BATTERS_DATA.find(p => p.player_name === selectedPlayerName)
+        : BOWLERS_DATA.find(p => p.player_name === selectedPlayerName);
+
+      if (!player) return;
+
+      document.getElementById('profileName').textContent = player.player_name;
+      const rolePill = document.getElementById('profileRole');
+      rolePill.textContent = isBatter ? 'Batter' : 'Bowler';
+      rolePill.className = `role-pill ${isBatter ? 'batter' : 'bowler'}`;
+
+      const threshold = isBatter ? MIN_SAMPLE_BALLS_BATTER : MIN_SAMPLE_BALLS_BOWLER;
+      const pBalls = Number(player.pressure_balls) || 0;
+      const sampleBadge = document.getElementById('sampleBadge');
+
+      if (pBalls >= threshold) {
+        sampleBadge.className = 'sample-status-banner adequate';
+        sampleBadge.innerHTML = `<span class="sample-icon">✓</span> Sufficient Sample (${pBalls} balls)`;
+      } else {
+        sampleBadge.className = 'sample-status-banner warning';
+        sampleBadge.innerHTML = `<span class="sample-icon">⚠</span> Small Sample Warning (${pBalls} < ${threshold} balls)`;
+      }
+
+      document.getElementById('statPressureBalls').textContent = formatNumberOrNA(player.pressure_balls);
+
+      if (isBatter) {
+        document.getElementById('statInnsOversLabel').textContent = 'Pressure Innings';
+        document.getElementById('statInnsOversVal').textContent = formatNumberOrNA(player.pressure_innings);
+
+        document.getElementById('statNormalMetricLabel').textContent = 'Normal Strike Rate';
+        document.getElementById('statNormalMetricVal').textContent = formatVal(player.normal_strike_rate, 1);
+
+        document.getElementById('statPressureMetricLabel').textContent = 'Pressure Strike Rate';
+        document.getElementById('statPressureMetricVal').textContent = formatVal(player.pressure_strike_rate, 1);
+      } else {
+        document.getElementById('statInnsOversLabel').textContent = 'Pressure Overs';
+        document.getElementById('statInnsOversVal').textContent = formatVal(player.pressure_overs, 1);
+
+        document.getElementById('statNormalMetricLabel').textContent = 'Normal Economy';
+        document.getElementById('statNormalMetricVal').textContent = formatVal(player.normal_economy, 2);
+
+        document.getElementById('statPressureMetricLabel').textContent = 'Pressure Economy';
+        document.getElementById('statPressureMetricVal').textContent = formatVal(player.pressure_economy, 2);
+      }
+
+      // Difference & Summary Card
+      const diffNumberEl = document.getElementById('diffNumber');
+      const diffUnitEl = document.getElementById('diffUnit');
+      const summaryTextEl = document.getElementById('summaryText');
+      const diffHeaderEl = document.getElementById('diffHeaderTitle');
+
+      if (isBatter) {
+        diffHeaderEl.textContent = 'Strike Rate Differential (Pressure vs Normal)';
+        const diff = player.sr_difference;
+
+        if (diff === null || diff === undefined || diff === 'n/a' || isNaN(diff)) {
+          diffNumberEl.textContent = 'n/a';
+          diffNumberEl.className = 'diff-number blue-unfav';
+          diffUnitEl.textContent = '';
+          summaryTextEl.textContent = `${player.player_name} has insufficient deliveries in normal or pressure conditions to compute strike rate delta.`;
+        } else {
+          const numDiff = Number(diff);
+          const sign = numDiff > 0 ? '+' : '';
+          diffNumberEl.textContent = `${sign}${numDiff.toFixed(1)}`;
+          diffUnitEl.textContent = 'SR Delta';
+
+          // For batters, positive SR difference is favorable (Pink #E91E8C)
+          if (numDiff >= 0) {
+            diffNumberEl.className = 'diff-number pink-fav';
+            summaryTextEl.textContent = `Strike rate rises by ${numDiff.toFixed(1)} under pressure (${formatVal(player.pressure_strike_rate, 1)} vs ${formatVal(player.normal_strike_rate, 1)} normal), with boundary % at ${formatVal(player.pressure_boundary_pct, 1, '%')}.`;
+          } else {
+            diffNumberEl.className = 'diff-number blue-unfav';
+            summaryTextEl.textContent = `Strike rate drops by ${Math.abs(numDiff).toFixed(1)} under pressure (${formatVal(player.pressure_strike_rate, 1)} vs ${formatVal(player.normal_strike_rate, 1)} normal) across ${pBalls} pressure deliveries.`;
+          }
+        }
+      } else {
+        diffHeaderEl.textContent = 'Economy Rate Differential (Pressure vs Normal)';
+        const diff = player.economy_difference;
+
+        if (diff === null || diff === undefined || diff === 'n/a' || isNaN(diff)) {
+          diffNumberEl.textContent = 'n/a';
+          diffNumberEl.className = 'diff-number blue-unfav';
+          diffUnitEl.textContent = '';
+          summaryTextEl.textContent = `${player.player_name} has insufficient legal overs bowled to calculate economy delta.`;
+        } else {
+          const numDiff = Number(diff);
+          const sign = numDiff > 0 ? '+' : '';
+          diffNumberEl.textContent = `${sign}${numDiff.toFixed(2)}`;
+          diffUnitEl.textContent = 'RPO Delta';
+
+          // For bowlers, negative economy difference is favorable (Pink #E91E8C)
+          if (numDiff <= 0) {
+            diffNumberEl.className = 'diff-number pink-fav';
+            summaryTextEl.textContent = `Economy improves by ${Math.abs(numDiff).toFixed(2)} RPO under pressure (${formatVal(player.pressure_economy, 2)} vs ${formatVal(player.normal_economy, 2)} normal), maintaining ${formatVal(player.pressure_dot_pct, 1, '%')} dot balls.`;
+          } else {
+            diffNumberEl.className = 'diff-number blue-unfav';
+            summaryTextEl.textContent = `Economy concedes ${numDiff.toFixed(2)} more runs per over under pressure (${formatVal(player.pressure_economy, 2)} vs ${formatVal(player.normal_economy, 2)} normal) across ${player.pressure_overs} overs.`;
+          }
+        }
+      }
+
+      // Reliability note
+      document.getElementById('reliabilityNoteText').textContent = player.reliability_note || 'No reliability note available.';
+    }
+
+    // Chart.js Normal vs Pressure Grouped Bar Chart
+    function updateComparisonChart() {
+      const isBatter = selectedPlayerType === 'batters';
+      const player = isBatter 
+        ? BATTERS_DATA.find(p => p.player_name === selectedPlayerName)
+        : BOWLERS_DATA.find(p => p.player_name === selectedPlayerName);
+
+      if (!player) return;
+
+      const chartTitleEl = document.getElementById('chartTitle');
+      chartTitleEl.textContent = isBatter 
+        ? `${player.player_name}: Strike Rate & Boundary % (Normal vs Pressure)`
+        : `${player.player_name}: Economy Rate & Dot Ball % (Normal vs Pressure)`;
+
+      const ctx = document.getElementById('comparisonChart').getContext('2d');
+
+      let labels = [];
+      let normalData = [];
+      let pressureData = [];
+
+      if (isBatter) {
+        labels = ['Strike Rate (Runs / 100 Balls)', 'Boundary Percentage (%)'];
+        normalData = [
+          player.normal_strike_rate !== 'n/a' && !isNaN(player.normal_strike_rate) ? Number(player.normal_strike_rate) : 0,
+          player.normal_boundary_pct !== 'n/a' && !isNaN(player.normal_boundary_pct) ? Number(player.normal_boundary_pct) : 0
+        ];
+        pressureData = [
+          player.pressure_strike_rate !== 'n/a' && !isNaN(player.pressure_strike_rate) ? Number(player.pressure_strike_rate) : 0,
+          player.pressure_boundary_pct !== 'n/a' && !isNaN(player.pressure_boundary_pct) ? Number(player.pressure_boundary_pct) : 0
+        ];
+      } else {
+        labels = ['Economy Rate (Runs / Over)', 'Dot Ball Percentage (%)'];
+        normalData = [
+          player.normal_economy !== 'n/a' && !isNaN(player.normal_economy) ? Number(player.normal_economy) : 0,
+          player.normal_dot_pct !== 'n/a' && !isNaN(player.normal_dot_pct) ? Number(player.normal_dot_pct) : 0
+        ];
+        pressureData = [
+          player.pressure_economy !== 'n/a' && !isNaN(player.pressure_economy) ? Number(player.pressure_economy) : 0,
+          player.pressure_dot_pct !== 'n/a' && !isNaN(player.pressure_dot_pct) ? Number(player.pressure_dot_pct) : 0
+        ];
+      }
+
+      if (comparisonChartInstance) {
+        comparisonChartInstance.destroy();
+      }
+
+      comparisonChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Normal Situation',
+              data: normalData,
+              backgroundColor: '#1A3C8F', // Deep Blue
+              borderColor: '#12285E',
+              borderWidth: 1,
+              borderRadius: 6,
+              barPercentage: 0.7,
+              categoryPercentage: 0.6
+            },
+            {
+              label: 'Pressure Situation',
+              data: pressureData,
+              backgroundColor: '#E91E8C', // Primary Pink
+              borderColor: '#D8157D',
+              borderWidth: 1,
+              borderRadius: 6,
+              barPercentage: 0.7,
+              categoryPercentage: 0.6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false // Using custom styled legend in HTML
+            },
+            tooltip: {
+              backgroundColor: '#14213D',
+              titleFont: { family: 'Inter', size: 13, weight: 'bold' },
+              bodyFont: { family: 'Inter', size: 12 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function(context) {
+                  const val = context.parsed.y;
+                  return ` ${context.dataset.label}: ${val}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: {
+                color: '#E2ECF8'
+              },
+              ticks: {
+                font: { family: 'Inter', size: 11, weight: '500' },
+                color: '#5A6A85'
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: { family: 'Inter', size: 12, weight: '600' },
+                color: '#14213D'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // All-Players Table Rendering & Sorting
+    // =========================================================================
+    function setTableMode(mode) {
+      tableCurrentMode = mode;
+      document.getElementById('tabBatters').classList.toggle('active', mode === 'batters');
+      document.getElementById('tabBatters').classList.toggle('pink-tab', mode === 'batters');
+      document.getElementById('tabBowlers').classList.toggle('active', mode === 'bowlers');
+      document.getElementById('tabBowlers').classList.toggle('pink-tab', mode === 'bowlers');
+
+      renderTable();
+    }
+
+    function handleTableSearch() {
+      tableSearchQuery = document.getElementById('tableSearch').value.toLowerCase().trim();
+      renderTable();
+    }
+
+    function handleSort(colKey) {
+      if (tableSortColumn === colKey) {
+        tableSortDirection = tableSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        tableSortColumn = colKey;
+        tableSortDirection = 'desc';
+      }
+      renderTable();
+    }
+
+    function renderTable() {
+      const isBatters = tableCurrentMode === 'batters';
+      const thead = document.getElementById('tableHead');
+      const tbody = document.getElementById('tableBody');
+
+      // Update Counts
+      document.getElementById('countBatters').textContent = BATTERS_DATA.length;
+      document.getElementById('countBowlers').textContent = BOWLERS_DATA.length;
+
+      // Table Header Definitions
+      let headers = [];
+      if (isBatters) {
+        headers = [
+          { key: 'player_name', label: 'Player Name' },
+          { key: 'pressure_balls', label: 'Pressure Balls' },
+          { key: 'pressure_innings', label: 'Innings' },
+          { key: 'normal_strike_rate', label: 'Normal SR' },
+          { key: 'pressure_strike_rate', label: 'Pressure SR' },
+          { key: 'sr_difference', label: 'SR Delta' },
+          { key: 'normal_boundary_pct', label: 'Normal Bndry %' },
+          { key: 'pressure_boundary_pct', label: 'Pressure Bndry %' },
+          { key: 'reliability_note', label: 'Sample Reliability' }
+        ];
+      } else {
+        headers = [
+          { key: 'player_name', label: 'Player Name' },
+          { key: 'pressure_balls', label: 'Pressure Balls' },
+          { key: 'pressure_overs', label: 'Overs' },
+          { key: 'normal_economy', label: 'Normal Econ' },
+          { key: 'pressure_economy', label: 'Pressure Econ' },
+          { key: 'economy_difference', label: 'Econ Delta' },
+          { key: 'normal_dot_pct', label: 'Normal Dot %' },
+          { key: 'pressure_dot_pct', label: 'Pressure Dot %' },
+          { key: 'wickets_pressure', label: 'Wickets' },
+          { key: 'reliability_note', label: 'Sample Reliability' }
+        ];
+      }
+
+      // Render TH
+      let thHtml = '<tr>';
+      headers.forEach(h => {
+        const isCurrent = tableSortColumn === h.key;
+        const arrow = isCurrent ? (tableSortDirection === 'asc' ? '▲' : '▼') : '↕';
+        thHtml += `<th onclick="handleSort('${h.key}')">${h.label} <span class="sort-arrow">${arrow}</span></th>`;
+      });
+      thHtml += '</tr>';
+      thead.innerHTML = thHtml;
+
+      // Filter and Sort Data
+      let dataset = isBatters ? [...BATTERS_DATA] : [...BOWLERS_DATA];
+
+      if (tableSearchQuery) {
+        dataset = dataset.filter(row => row.player_name.toLowerCase().includes(tableSearchQuery));
+      }
+
+      dataset.sort((a, b) => {
+        let vA = a[tableSortColumn];
+        let vB = b[tableSortColumn];
+
+        if (vA === 'n/a' || vA === null || vA === undefined) vA = -999999;
+        if (vB === 'n/a' || vB === null || vB === undefined) vB = -999999;
+
+        if (typeof vA === 'string' && typeof vB === 'string') {
+          return tableSortDirection === 'asc' ? vA.localeCompare(vB) : vB.localeCompare(vA);
+        }
+        return tableSortDirection === 'asc' ? Number(vA) - Number(vB) : Number(vB) - Number(vA);
+      });
+
+      // Render Rows
+      let tbHtml = '';
+      dataset.forEach(row => {
+        const isSelected = (row.player_name === selectedPlayerName && ((isBatters && selectedPlayerType === 'batters') || (!isBatters && selectedPlayerType === 'bowlers')));
+        const rowClass = isSelected ? 'selected-row' : '';
+
+        tbHtml += `<tr class="${rowClass}" onclick="selectPlayerFromTable('${isBatters ? 'batters' : 'bowlers'}', '${row.player_name.replace(/'/g, "\\'")}')">`;
+
+        if (isBatters) {
+          const diffVal = row.sr_difference;
+          const diffClass = (diffVal !== 'n/a' && !isNaN(diffVal) && Number(diffVal) > 0) ? 'table-badge-fav' : 'table-badge-unfav';
+          const diffSign = (diffVal !== 'n/a' && !isNaN(diffVal) && Number(diffVal) > 0) ? '+' : '';
+
+          tbHtml += `
+            <td style="font-weight: 700; color: var(--rr-deep-blue);">${row.player_name}</td>
+            <td>${formatNumberOrNA(row.pressure_balls)}</td>
+            <td>${formatNumberOrNA(row.pressure_innings)}</td>
+            <td>${formatVal(row.normal_strike_rate, 1)}</td>
+            <td>${formatVal(row.pressure_strike_rate, 1)}</td>
+            <td class="${diffClass}">${diffVal !== 'n/a' && !isNaN(diffVal) ? diffSign + Number(diffVal).toFixed(1) : 'n/a'}</td>
+            <td>${formatVal(row.normal_boundary_pct, 1, '%')}</td>
+            <td>${formatVal(row.pressure_boundary_pct, 1, '%')}</td>
+            <td style="font-size: 0.82rem; color: var(--rr-text-muted);">${row.reliability_note || 'n/a'}</td>
+          `;
+        } else {
+          const diffVal = row.economy_difference;
+          // For bowler, negative difference is favorable
+          const diffClass = (diffVal !== 'n/a' && !isNaN(diffVal) && Number(diffVal) < 0) ? 'table-badge-fav' : 'table-badge-unfav';
+          const diffSign = (diffVal !== 'n/a' && !isNaN(diffVal) && Number(diffVal) > 0) ? '+' : '';
+
+          tbHtml += `
+            <td style="font-weight: 700; color: var(--rr-deep-blue);">${row.player_name}</td>
+            <td>${formatNumberOrNA(row.pressure_balls)}</td>
+            <td>${formatVal(row.pressure_overs, 1)}</td>
+            <td>${formatVal(row.normal_economy, 2)}</td>
+            <td>${formatVal(row.pressure_economy, 2)}</td>
+            <td class="${diffClass}">${diffVal !== 'n/a' && !isNaN(diffVal) ? diffSign + Number(diffVal).toFixed(2) : 'n/a'}</td>
+            <td>${formatVal(row.normal_dot_pct, 1, '%')}</td>
+            <td>${formatVal(row.pressure_dot_pct, 1, '%')}</td>
+            <td style="font-weight: 700;">${formatNumberOrNA(row.wickets_pressure)}</td>
+            <td style="font-size: 0.82rem; color: var(--rr-text-muted);">${row.reliability_note || 'n/a'}</td>
+          `;
+        }
+
+        tbHtml += '</tr>';
+      });
+
+      if (dataset.length === 0) {
+        tbHtml = `<tr><td colspan="10" style="text-align: center; padding: 2rem; color: var(--rr-text-muted);">No Rajasthan Royals players matched the search filter.</td></tr>`;
+      }
+
+      tbody.innerHTML = tbHtml;
+    }
+
+    function selectPlayerFromTable(role, playerName) {
+      selectedPlayerType = role;
+      selectedPlayerName = playerName;
+
+      // Update dropdown selection
+      const select = document.getElementById('playerSelect');
+      const targetVal = `${role === 'batters' ? 'batter' : 'bowler'}:${playerName}`;
+      select.value = targetVal;
+
+      updatePlayerProfileCard();
+      updateComparisonChart();
+      renderTable();
+
+      // Smooth scroll to profile
+      document.querySelector('.profile-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function highlightTableRow() {
+      // Re-render table to update highlighted row
+      renderTable();
+    }
+
+    // Initialize Dashboard
+    window.addEventListener('DOMContentLoaded', () => {
+      initDropdown();
+      handlePlayerSelectChange();
+      renderTable();
+    });
+  </script>
+</body>
+</html>
