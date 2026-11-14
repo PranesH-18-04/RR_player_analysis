@@ -1,0 +1,21 @@
+rank,role,player_name,pressure_balls,sr_difference,dismissal_difference,wicket_difference,economy_difference,rating,adjusted_rating
+1,Batter,Yashasvi Jaiswal,209,235.0,0.348,n/a,n/a,2.0437,1.7872
+2,Batter,Vaibhav Sooryavanshi,99,243.6,0.33,n/a,n/a,2.3032,1.7676
+3,Batter,Dhruv Jurel,201,128.4,0.155,n/a,n/a,1.7885,1.5563
+4,Batter,Ravichandran Ashwin,94,62.4,-0.022,n/a,n/a,2.0399,1.5464
+5,Batter,Jofra Archer,79,50.9,0.139,n/a,n/a,0.7181,0.5205
+6,Batter,Trent Boult,54,36.3,0.107,n/a,n/a,0.7228,0.4647
+7,Batter,Devdutt Padikkal,110,164.0,0.41,n/a,n/a,0.5174,0.4065
+8,Batter,Rassie van der Dussen,70,152.7,0.381,n/a,n/a,0.5512,0.3858
+9,Batter,Karun Nair,35,245.0,0.556,n/a,n/a,0.7159,0.3855
+10,Batter,Sanju Samson,314,101.1,0.304,n/a,n/a,0.3107,0.2836
+1,Bowler,Jimmy Neesham,117,n/a,n/a,0.971,3.39,2.022,1.6778
+2,Bowler,Adam Zampa,215,n/a,n/a,1.057,4.7,1.7953,1.615
+3,Bowler,Jofra Archer,325,n/a,n/a,0.875,3.87,1.5123,1.4083
+4,Bowler,Adam Milne,142,n/a,n/a,0.874,4.49,1.2655,1.0825
+5,Bowler,Wanindu Hasaranga,286,n/a,n/a,1.137,7.25,1.0615,0.9794
+6,Bowler,Akash Madhwal,137,n/a,n/a,0.594,2.58,1.0788,0.918
+7,Bowler,Trent Boult,273,n/a,n/a,0.996,6.34,0.9472,0.8706
+8,Bowler,Yuzvendra Chahal,401,n/a,n/a,1.098,7.43,0.8604,0.8118
+9,Bowler,Maheesh Theekshana,350,n/a,n/a,0.795,5.06,0.7774,0.7275
+10,Bowler,Corbin Bosch,89,n/a,n/a,0.968,7.06,0.5708,0.4495

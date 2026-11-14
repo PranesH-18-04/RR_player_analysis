@@ -1,6 +1,6 @@
 # SupeRR Selector: Rajasthan Royals Pressure Analysis & Win Probability Model
 
-A data science system and interactive analytics dashboard built for the **Rajasthan Royals - SupeRR Selector (Season 2)** hackathon. This repository evaluates historical T20 performance (IPL and T20 International data, 2022 onward) to measure how batters and bowlers perform in high-pressure match situations compared with their usual baselines.
+A data-driven talent identification and decision science system built for the **Rajasthan Royals - SupeRR Selector (Season 2)** hackathon. This system quantifies player performance under acute match pressure compared with baseline/normal play across IPL and T20 International matches (2022 onward).
 
 ---
 
@@ -10,17 +10,18 @@ A data science system and interactive analytics dashboard built for the **Rajast
 RR_player_analysis/
 │
 ├── frontend/
-│   └── index.html                 # Single-page interactive RR Pressure Analysis Dashboard
+│   └── index.html                 # Interactive RR Pressure Analytics Dashboard (Chart.js, RR jersey theme)
 │
 ├── backend/
-│   ├── exploratory_analysis.py    # Player roster exploration, unique player counts & season parsing
-│   ├── win_probability_model.py   # Second-innings win probability model (Logistic Regression)
-│   └── pressure_metrics.py        # Pressure vs normal metric extraction for RR players
+│   ├── exploratory_analysis.py    # Player roster reconciliation & season exploratory data analysis
+│   ├── win_probability_model.py   # Second-innings win probability model (Logistic Regression & swing labels)
+│   └── pressure_metrics.py        # Pressure metrics, dismissal penalties, z-score rating & shrinkage
 │
 ├── data/
-│   ├── batters_pressure.csv       # Computed pressure metrics for 57 RR batters
-│   ├── bowlers_pressure.csv       # Computed pressure metrics for 45 RR bowlers
-│   └── win_prob_curves.png        # In-play win probability validation curves
+│   ├── batters_pressure.csv       # Pressure metrics & adjusted ratings for 57 RR batters
+│   ├── bowlers_pressure.csv       # Pressure metrics & adjusted ratings for 45 RR bowlers
+│   ├── top10_rankings.csv         # Top 10 Batters and Top 10 Bowlers by Adjusted Rating
+│   └── win_prob_curves.png        # Second-innings in-play win probability validation curves
 │
 ├── index.html                     # Root entry point for GitHub Pages deployment
 ├── .gitignore
@@ -29,70 +30,126 @@ RR_player_analysis/
 
 ---
 
-## 1. Exploratory Player Analysis
+## 1. Player Count Reconciliation
 
-* **Scope:** Rajasthan Royals players across IPL and international series from 2022 onward.
-* **Squad Roster Size:** **69 unique players** across **5 seasons** (`2022`, `2023`, `2024`, `2025`, `2026`).
-* **Active Matchday Appearances:** **56 unique players** took the pitch (`is_played == True`).
-* **Missing Values:** Zero missing values in player identification and season columns.
-* **Run Script:**
-  ```bash
-  python backend/exploratory_analysis.py
-  ```
+A rigorous reconciliation across all player definitions was conducted to distinguish official squad contracts from active on-field participation and statistically reliable samples:
 
----
-
-## 2. Second-Innings Win Probability Model (Chasing Side)
-
-* **Objective:** Predict in-play win probability after every ball in the second innings.
-* **Features:**
-  1. `runs_needed`: Target minus cumulative runs scored. Handles D/L-affected targets via `revised_target` when present.
-  2. `balls_remaining`: Total balls allowed (`second_inn_revised_overs` when revised, else 120) minus delivery sequence.
-  3. `wickets_in_hand`: $10 - \text{cumulative wickets}$.
-  4. `rrr`: Required run rate $(\text{runs\_needed} \times 6 / \text{balls\_remaining})$.
-* **Model:** Logistic Regression with a time-based and match-grouped split:
-  * **Train Set (2022–2024):** 501 matches (55,602 ball events)
-  * **Test Set (2025 onward):** 337 matches (36,556 ball events)
-* **Performance on Unseen Test Set:**
-  * **Log Loss:** `0.4169` (well below uninformative benchmark $0.6931$)
-  * **Brier Score:** `0.1354`
-  * **Monotonic Calibration:** Validated across 10 probability bins from $0.0$ to $1.0$.
-* **Run Script:**
-  ```bash
-  python backend/win_probability_model.py
-  ```
+| Definition | Player Count | Explanation |
+| :--- | :---: | :--- |
+| **Squad Roster** | **69** | Total unique players mapped to Rajasthan Royals in `competition_team_player_mapping.csv` across the 2022–2026 IPL editions. |
+| **Batted in Matches** | **57** | Unique RR players who faced $\ge 1$ delivery as a striker in competitive match records. |
+| **Bowled in Matches** | **45** | Unique RR players who bowled $\ge 1$ delivery in competitive match records. |
+| **Both Batted & Bowled** | **42** | Players who contributed with both bat and ball (all-rounders, bowling all-rounders, and tailenders). |
+| **Reserves / Non-Playing** | **9** | Contracted squad members who never took the pitch to face or bowl a ball in matchday records. |
+| **Qualifying Batters** | **28** | RR batters meeting the minimum sample-size rule ($\ge 30$ pressure deliveries faced). |
+| **Qualifying Bowlers** | **32** | RR bowlers meeting the minimum sample-size rule ($\ge 24$ pressure deliveries bowled). |
 
 ---
 
-## 3. Pressure Analytics & Metrics
+## 2. Win-Probability-Based Pressure Definition
 
-* **Pressure Definition:**
-  * Innings 2: Deliveries in death overs (overs 16–20) **OR** where required run rate $\ge 9.00$ runs/over.
-  * Innings 1: Deliveries in death overs (overs 16–20).
-* **Batter Metrics:** `pressure_balls`, `pressure_innings`, `normal_strike_rate`, `pressure_strike_rate`, `sr_difference`, `normal_boundary_pct`, `pressure_boundary_pct`, `reliability_note`.
-* **Bowler Metrics:** `pressure_balls`, `pressure_overs`, `normal_economy`, `pressure_economy`, `economy_difference`, `normal_dot_pct`, `pressure_dot_pct`, `wickets_pressure`, `reliability_note`.
-* **Run Script:**
-  ```bash
-  python backend/pressure_metrics.py
-  ```
+Rather than relying purely on static heuristics, match pressure is grounded in empirical game state leverage:
 
----
-
-## 4. Interactive HTML Dashboard
-
-A responsive single-page web app built with vanilla JavaScript, CSS, and Chart.js matching the Rajasthan Royals visual identity:
-* **Color Palette:** Primary Pink (`#E91E8C`), Deep Blue (`#1A3C8F`), Light Blue (`#EAF2FB`), and Dark Text (`#14213D`).
-* **Player Selector:** Dropdown grouped into RR Batters and RR Bowlers with instant profile synchronization.
-* **Sample-Size Warning Badges:** Automatically flags players with fewer than 30 pressure balls (batters) or 24 pressure balls (bowlers).
-* **Difference Indicator:** Large differential number colored pink for favorable outcomes (strike rate increases or economy drops) and blue for unfavorable trends, paired with an auto-generated plain-English summary.
-* **Comparison Bar Chart:** Chart.js grouped bar chart comparing normal vs. pressure metrics.
-* **Sortable Roster Table:** Toggle between batters and bowlers with column sorting, search filter, and alternating `#EAF2FB` row shading.
-* **How to View:**
-  Double click [index.html](index.html) or [frontend/index.html](frontend/index.html) to open in any web browser.
+1. **Second Innings (Chasing Side):**
+   * A Logistic Regression win probability model is trained on historical 2022–2024 matches using four core state features:
+     * `runs_needed`: Target (including D/L revised targets) minus cumulative runs.
+     * `balls_remaining`: Balls allowed (adjusted for D/L revised overs) minus deliveries bowled.
+     * `wickets_in_hand`: $10 - \text{wickets lost}$.
+     * `rrr`: Required run rate $(\text{runs\_needed} \times 6 / \text{balls\_remaining})$.
+   * For every delivery, the win probability swing is computed:
+     $$\Delta P = |P_{\text{after}} - P_{\text{before}}|$$
+   * A delivery is classified as **High Pressure** if its swing falls within the **top 15%** ($\ge 85\text{th percentile}$, threshold $\approx 0.02539$ or $2.54\%$ swing) of all training set deliveries.
+2. **First Innings:**
+   * Uses the **death-overs rule (overs 16–20)**. In the first innings, there is no fixed chasing target or required run rate to anchor real-time win probability; overs 16–20 represent the designated resource-maximization phase where boundary acceleration and wicket loss have the highest mathematical impact on par score expectations.
+3. **Documented Comparison:**
+   * Rule-based pressure (death overs or chase RRR $\ge 9.0$) is tracked in parallel for audit and baseline benchmarking.
 
 ---
 
-## License & Usage
+## 3. Performance Metrics & Combined Rating Formula
+
+### Batter Metrics & Dismissal Penalties
+* Evaluates `pressure_strike_rate` vs `normal_strike_rate` ($\text{sr\_difference} = \text{SR}_{\text{pressure}} - \text{SR}_{\text{normal}}$).
+* Evaluates dismissal frequency:
+  * `pressure_dismissal_rate` = dismissals per pressure innings.
+  * `normal_dismissal_rate` = dismissals per normal innings.
+  * $\text{dismissal\_difference} = \text{Rate}_{\text{pressure}} - \text{Rate}_{\text{normal}}$.
+* **Batter Rating:**
+  $$\text{Rating}_{\text{batter}} = z(\text{sr\_difference}) - z(\text{dismissal\_difference})$$
+  *(Getting dismissed more frequently under pressure penalizes the rating).*
+
+### Bowler Metrics & Wicket Rates
+* Evaluates `pressure_economy` vs `normal_economy` ($\text{economy\_difference} = \text{Econ}_{\text{pressure}} - \text{Econ}_{\text{normal}}$).
+* Evaluates wicket-taking potency:
+  * `pressure_wickets_per_over` vs `normal_wickets_per_over`.
+  * $\text{wicket\_difference} = \text{WPO}_{\text{pressure}} - \text{WPO}_{\text{normal}}$.
+* **Bowler Rating:**
+  $$\text{Rating}_{\text{bowler}} = z(\text{wicket\_difference}) - z(\text{economy\_difference})$$
+  *(Conceding more runs under pressure penalizes the rating, while higher pressure wicket-taking elevates it).*
+
+### Empirical Bayesian Shrinkage
+To prevent small-sample anomalies from topping the leaderboards, ratings are shrunk toward the squad mean:
+$$\text{Adjusted Rating} = \frac{\text{pressure\_balls} \cdot \text{Rating} + k \cdot \mu_{\text{squad}}}{\text{pressure\_balls} + k}$$
+* $k = 30$ for batters.
+* $k = 24$ for bowlers.
+
+---
+
+## 4. Top 10 Rankings (Qualifying Players)
+
+The official rankings produced by `backend/pressure_metrics.py` and stored in `data/top10_rankings.csv`:
+
+### Top 10 Batters (Minimum 30 Pressure Balls)
+| Rank | Player Name | Pressure Balls | SR Diff | Dismissal Diff | Raw Rating | Adjusted Rating |
+| :---: | :--- | :---: | :---: | :---: | :---: | :---: |
+| **1** | **Yashasvi Jaiswal** | 209 | +235.0 | +0.348 | +2.0437 | **+1.7872** |
+| **2** | **Vaibhav Sooryavanshi** | 99 | +243.6 | +0.330 | +2.3032 | **+1.7676** |
+| **3** | **Dhruv Jurel** | 201 | +128.4 | +0.155 | +1.7885 | **+1.5563** |
+| **4** | **Ravichandran Ashwin** | 94 | +62.4 | -0.022 | +2.0399 | **+1.5464** |
+| **5** | **Jofra Archer** | 79 | +50.9 | +0.139 | +0.7181 | **+0.5205** |
+| **6** | **Trent Boult** | 54 | +36.3 | +0.107 | +0.7228 | **+0.4647** |
+| **7** | **Devdutt Padikkal** | 110 | +164.0 | +0.410 | +0.5174 | **+0.4065** |
+| **8** | **Rassie van der Dussen** | 70 | +152.7 | +0.381 | +0.5512 | **+0.3858** |
+| **9** | **Karun Nair** | 35 | +245.0 | +0.556 | +0.7159 | **+0.3855** |
+| **10** | **Sanju Samson** | 314 | +101.1 | +0.304 | +0.3107 | **+0.2836** |
+
+### Top 10 Bowlers (Minimum 24 Pressure Balls)
+| Rank | Player Name | Pressure Balls | Wicket Diff | Econ Diff | Raw Rating | Adjusted Rating |
+| :---: | :--- | :---: | :---: | :---: | :---: | :---: |
+| **1** | **Jimmy Neesham** | 117 | +0.971 | +3.39 | +2.0220 | **+1.6778** |
+| **2** | **Adam Zampa** | 215 | +1.057 | +4.70 | +1.7953 | **+1.6150** |
+| **3** | **Jofra Archer** | 325 | +0.875 | +3.87 | +1.5123 | **+1.4083** |
+| **4** | **Adam Milne** | 142 | +0.874 | +4.49 | +1.2655 | **+1.0825** |
+| **5** | **Wanindu Hasaranga** | 286 | +1.137 | +7.25 | +1.0615 | **+0.9794** |
+| **6** | **Akash Madhwal** | 137 | +0.594 | +2.58 | +1.0788 | **+0.9180** |
+| **7** | **Trent Boult** | 273 | +0.996 | +6.34 | +0.9472 | **+0.8706** |
+| **8** | **Yuzvendra Chahal** | 401 | +1.098 | +7.43 | +0.8604 | **+0.8118** |
+| **9** | **Maheesh Theekshana** | 350 | +0.795 | +5.06 | +0.7774 | **+0.7275** |
+| **10** | **Corbin Bosch** | 89 | +0.968 | +7.06 | +0.5708 | **+0.4495** |
+
+---
+
+## 5. Execution Instructions
+
+Run all pipeline scripts from the repository root:
+
+```bash
+# 1. Exploratory data analysis & player reconciliation
+python backend/exploratory_analysis.py
+
+# 2. Win probability model training, calibration & swing threshold estimation
+python backend/win_probability_model.py
+
+# 3. Pressure metrics computation, dismissal penalties & top 10 rankings
+python backend/pressure_metrics.py
+```
+
+### Viewing the Interactive Dashboard
+Open `index.html` (or `frontend/index.html`) directly in your web browser, or serve it via GitHub Pages.
+
+---
+
+## License & Competition Notice
 
 Data pack for competition use only. Not for publication.
 © Rajasthan Royals • SupeRR Selector Season 2.

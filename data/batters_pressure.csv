@@ -1,58 +1,58 @@
-player_name,pressure_balls,pressure_innings,normal_strike_rate,pressure_strike_rate,sr_difference,normal_boundary_pct,pressure_boundary_pct,reliability_note
-Abdul Basith,1,1,n/a,100.0,n/a,n/a,0.0,Small sample warning (1 balls). High variance; interpret with caution.
-Adam Milne,54,12,25.0,96.3,71.3,0.0,9.3,Moderate sample (54 balls across 12 inns). Reliable trend indicators.
-Adam Zampa,50,15,66.7,60.0,-6.7,0.0,4.0,Moderate sample (50 balls across 15 inns). Reliable trend indicators.
-Akash Madhwal,14,2,n/a,57.1,n/a,n/a,0.0,Small sample warning (14 balls). High variance; interpret with caution.
-Ashok Sharma,5,2,n/a,20.0,n/a,n/a,0.0,Small sample warning (5 balls). High variance; interpret with caution.
-Avesh Khan,52,19,100.0,150.0,50.0,12.5,23.1,Moderate sample (52 balls across 19 inns). Reliable trend indicators.
-Brijesh Sharma,4,2,n/a,50.0,n/a,n/a,0.0,Small sample warning (4 balls). High variance; interpret with caution.
-Corbin Bosch,108,12,69.4,135.2,65.8,2.8,16.7,Robust sample (108 balls across 12 inns). Highly statistically reliable.
-Daryl Mitchell,540,39,131.2,156.1,24.9,13.9,18.7,Robust sample (540 balls across 39 inns). Highly statistically reliable.
-Dasun Shanaka,527,46,113.7,144.2,30.5,12.2,19.2,Robust sample (527 balls across 46 inns). Highly statistically reliable.
-Devdutt Padikkal,351,23,134.3,131.6,-2.7,19.6,19.1,Robust sample (351 balls across 23 inns). Highly statistically reliable.
-Dhruv Jurel,494,39,139.0,151.0,12.0,20.1,19.4,Robust sample (494 balls across 39 inns). Highly statistically reliable.
-Donovan Ferreira,217,21,128.5,177.9,49.4,14.6,26.3,Robust sample (217 balls across 21 inns). Highly statistically reliable.
-FazalHaq Farooqi,48,12,n/a,33.3,n/a,n/a,0.0,Moderate sample (48 balls across 12 inns). Reliable trend indicators.
-Jason Holder,373,53,122.8,140.2,17.4,16.3,17.4,Robust sample (373 balls across 53 inns). Highly statistically reliable.
-Jimmy Neesham,259,30,120.1,136.3,16.2,13.4,17.4,Robust sample (259 balls across 30 inns). Highly statistically reliable.
-Joe Root,15,1,n/a,66.7,n/a,n/a,6.7,Small sample warning (15 balls). High variance; interpret with caution.
-Jofra Archer,142,28,111.1,124.6,13.5,11.1,14.1,Robust sample (142 balls across 28 inns). Highly statistically reliable.
-Jos Buttler,889,64,145.3,163.1,17.8,20.8,24.2,Robust sample (889 balls across 64 inns). Highly statistically reliable.
-KM Asif,2,1,n/a,0.0,n/a,n/a,0.0,Small sample warning (2 balls). High variance; interpret with caution.
-Karun Nair,89,5,130.8,165.2,34.4,20.0,28.1,Robust sample (89 balls across 5 inns). Highly statistically reliable.
-Keshav Maharaj,66,12,60.0,100.0,40.0,8.0,10.6,Robust sample (66 balls across 12 inns). Highly statistically reliable.
-Kuldeep Sen,3,1,n/a,0.0,n/a,n/a,0.0,Small sample warning (3 balls). High variance; interpret with caution.
-Kumar Kartikeya Singh,18,4,n/a,66.7,n/a,n/a,5.6,Small sample warning (18 balls). High variance; interpret with caution.
-Kunal Rathore,5,1,n/a,0.0,n/a,n/a,0.0,Small sample warning (5 balls). High variance; interpret with caution.
-Kwena Maphaka,26,6,n/a,103.8,n/a,n/a,15.4,Small sample warning (26 balls). High variance; interpret with caution.
-Lhuan Pretorius,10,4,141.2,70.0,-71.2,22.1,0.0,Small sample warning (10 balls). High variance; interpret with caution.
-Maheesh Theekshana,198,35,16.7,64.1,47.4,0.0,5.1,Robust sample (198 balls across 35 inns). Highly statistically reliable.
-Murugan Ashwin,14,4,n/a,85.7,n/a,n/a,14.3,Small sample warning (14 balls). High variance; interpret with caution.
-Nandre Burger,25,6,40.0,88.0,48.0,0.0,4.0,Small sample warning (25 balls). High variance; interpret with caution.
-Nathan Coulter Nile,2,1,n/a,50.0,n/a,n/a,0.0,Small sample warning (2 balls). High variance; interpret with caution.
-Navdeep Saini,2,1,n/a,100.0,n/a,n/a,0.0,Small sample warning (2 balls). High variance; interpret with caution.
-Nitish Rana,416,26,134.5,144.0,9.5,19.9,21.9,Robust sample (416 balls across 26 inns). Highly statistically reliable.
-Obed McCoy,44,8,n/a,86.4,n/a,n/a,13.6,Moderate sample (44 balls across 8 inns). Reliable trend indicators.
-Prasidh Krishna,22,5,n/a,63.6,n/a,n/a,4.5,Small sample warning (22 balls). High variance; interpret with caution.
-Rassie van der Dussen,215,13,93.2,136.3,43.1,8.7,16.3,Robust sample (215 balls across 13 inns). Highly statistically reliable.
-Ravi Bishnoi,86,26,76.9,97.7,20.8,15.4,11.6,Robust sample (86 balls across 26 inns). Highly statistically reliable.
-Ravi Singh,0,0,200.0,n/a,n/a,50.0,n/a,Small sample warning (0 balls). High variance; interpret with caution.
-Ravichandran Ashwin,150,27,119.6,135.3,15.7,14.0,15.3,Robust sample (150 balls across 27 inns). Highly statistically reliable.
-Ravindra Jadeja,687,58,111.7,137.1,25.4,11.4,15.3,Robust sample (687 balls across 58 inns). Highly statistically reliable.
-Riyan Parag,563,51,137.4,154.4,17.0,16.4,21.7,Robust sample (563 balls across 51 inns). Highly statistically reliable.
-Rovman Powell,982,78,116.4,154.1,37.7,13.7,21.3,Robust sample (982 balls across 78 inns). Highly statistically reliable.
-Sam Curran,505,50,113.9,133.1,19.2,11.9,15.2,Robust sample (505 balls across 50 inns). Highly statistically reliable.
-Sandeep Sharma,13,3,n/a,61.5,n/a,n/a,0.0,Small sample warning (13 balls). High variance; interpret with caution.
-Sanju Samson,697,56,147.0,156.4,9.4,21.5,23.2,Robust sample (697 balls across 56 inns). Highly statistically reliable.
-Shimron Hetmyer,875,73,132.5,150.3,17.8,16.9,20.3,Robust sample (875 balls across 73 inns). Highly statistically reliable.
-Shubham Dubey,129,15,94.7,156.6,61.9,10.5,21.7,Robust sample (129 balls across 15 inns). Highly statistically reliable.
-Sushant Mishra,3,1,n/a,33.3,n/a,n/a,0.0,Small sample warning (3 balls). High variance; interpret with caution.
-Tanush Kotian,0,0,75.0,n/a,n/a,9.4,n/a,Small sample warning (0 balls). High variance; interpret with caution.
-Tom Kohler,17,2,108.1,47.1,-61.0,18.9,5.9,Small sample warning (17 balls). High variance; interpret with caution.
-Trent Boult,77,21,100.0,118.2,18.2,14.3,11.7,Robust sample (77 balls across 21 inns). Highly statistically reliable.
-Tushar Deshpande,26,8,n/a,126.9,n/a,n/a,11.5,Small sample warning (26 balls). High variance; interpret with caution.
-Vaibhav Sooryavanshi,200,16,211.3,211.5,0.2,35.6,37.0,Robust sample (200 balls across 16 inns). Highly statistically reliable.
-Wanindu Hasaranga,292,52,122.6,120.9,-1.7,16.1,14.7,Robust sample (292 balls across 52 inns). Highly statistically reliable.
-Yashasvi Jaiswal,548,34,148.6,159.7,11.1,23.9,27.4,Robust sample (548 balls across 34 inns). Highly statistically reliable.
-Yudhvir Singh,16,4,n/a,137.5,n/a,n/a,18.8,Small sample warning (16 balls). High variance; interpret with caution.
-Yuzvendra Chahal,10,3,n/a,60.0,n/a,n/a,0.0,Small sample warning (10 balls). High variance; interpret with caution.
+player_name,pressure_balls,pressure_innings,normal_strike_rate,pressure_strike_rate,sr_difference,normal_boundary_pct,pressure_boundary_pct,pressure_dismissals,pressure_dismissal_rate,pressure_runs_per_dismissal,normal_dismissals,normal_dismissal_rate,normal_runs_per_dismissal,dismissal_difference,qualifies,reliability_note,rating,adjusted_rating
+Abdul Basith,0,0,100.0,n/a,n/a,0.0,n/a,0,n/a,n/a,0,0.0,n/a,n/a,False,Small sample warning (0 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Adam Milne,34,8,62.5,111.8,49.3,4.2,11.8,5,0.625,7.6,3,0.429,5.0,0.196,True,Moderate sample (34 balls across 8 inns). Reliable trend indicators.,0.2879,0.153
+Adam Zampa,26,9,48.1,73.1,25.0,0.0,7.7,5,0.556,3.8,4,0.571,3.2,-0.015,False,Small sample warning (26 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Akash Madhwal,5,1,44.4,80.0,35.6,0.0,0.0,0,0.0,n/a,0,0.0,n/a,0.0,False,Small sample warning (5 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Ashok Sharma,0,0,20.0,n/a,n/a,0.0,n/a,0,n/a,n/a,0,0.0,n/a,n/a,False,Small sample warning (0 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Avesh Khan,28,13,159.4,125.0,-34.4,25.0,17.9,4,0.308,8.8,1,0.111,51.0,0.197,False,Small sample warning (28 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Brijesh Sharma,3,1,100.0,33.3,-66.7,0.0,0.0,0,0.0,n/a,0,0.0,n/a,0.0,False,Small sample warning (3 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Corbin Bosch,87,12,78.9,144.8,65.9,5.3,18.4,7,0.583,18.0,2,0.25,22.5,0.333,True,Robust sample (87 balls across 12 inns). Highly statistically reliable.,-0.4336,-0.3224
+Daryl Mitchell,246,39,125.5,206.9,81.4,12.2,30.5,31,0.795,16.4,25,0.403,45.1,0.392,True,Robust sample (246 balls across 39 inns). Highly statistically reliable.,-0.6167,-0.5497
+Dasun Shanaka,261,42,106.4,190.0,83.6,9.5,31.8,30,0.714,16.5,18,0.375,31.2,0.339,True,Robust sample (261 balls across 42 inns). Highly statistically reliable.,-0.2058,-0.1846
+Devdutt Padikkal,110,26,116.0,280.0,164.0,14.9,58.2,25,0.962,12.3,32,0.552,33.7,0.41,True,Robust sample (110 balls across 26 inns). Highly statistically reliable.,0.5174,0.4065
+Dhruv Jurel,201,34,114.4,242.8,128.4,13.0,39.8,19,0.559,25.7,19,0.404,36.5,0.155,True,Robust sample (201 balls across 34 inns). Highly statistically reliable.,1.7885,1.5563
+Donovan Ferreira,118,20,130.9,214.4,83.5,16.1,33.1,14,0.7,18.1,9,0.375,34.3,0.325,True,Robust sample (118 balls across 20 inns). Highly statistically reliable.,-0.1077,-0.0859
+FazalHaq Farooqi,2,2,32.6,50.0,17.4,0.0,0.0,0,0.0,n/a,1,0.1,15.0,-0.1,False,Small sample warning (2 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Jason Holder,145,42,123.4,166.2,42.8,13.8,24.8,30,0.714,8.0,12,0.293,32.9,0.421,True,Robust sample (145 balls across 42 inns). Highly statistically reliable.,-1.413,-1.1708
+Jimmy Neesham,153,31,109.5,167.3,57.8,10.5,25.5,20,0.645,12.8,7,0.25,44.6,0.395,True,Robust sample (153 balls across 31 inns). Highly statistically reliable.,-0.9987,-0.835
+Joe Root,1,1,71.4,0.0,-71.4,7.1,0.0,1,1.0,0.0,0,0.0,n/a,1.0,False,Small sample warning (1 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Jofra Archer,79,21,97.2,148.1,50.9,9.7,17.7,11,0.524,10.6,5,0.385,14.0,0.139,True,Robust sample (79 balls across 21 inns). Highly statistically reliable.,0.7181,0.5205
+Jos Buttler,415,75,133.4,253.3,119.9,17.5,47.5,63,0.84,16.7,42,0.365,77.4,0.475,True,Robust sample (415 balls across 75 inns). Highly statistically reliable.,-0.6192,-0.5774
+KM Asif,0,0,0.0,n/a,n/a,0.0,n/a,0,n/a,n/a,1,1.0,0.0,n/a,False,Small sample warning (0 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Karun Nair,35,6,95.0,340.0,245.0,10.9,71.4,6,1.0,19.8,4,0.444,28.2,0.556,True,Moderate sample (35 balls across 6 inns). Reliable trend indicators.,0.7159,0.3855
+Keshav Maharaj,27,4,67.2,140.7,73.5,4.7,22.2,3,0.75,12.7,7,0.636,6.1,0.114,False,Small sample warning (27 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Kuldeep Sen,0,0,0.0,n/a,n/a,0.0,n/a,0,n/a,n/a,0,0.0,n/a,n/a,False,Small sample warning (0 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Kumar Kartikeya Singh,2,2,62.5,100.0,37.5,6.2,0.0,1,0.5,2.0,2,0.667,5.0,-0.167,False,Small sample warning (2 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Kunal Rathore,1,1,0.0,0.0,0.0,0.0,0.0,1,1.0,0.0,0,0.0,n/a,1.0,False,Small sample warning (1 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Kwena Maphaka,12,2,100.0,108.3,8.3,14.3,16.7,0,0.0,n/a,1,0.25,14.0,-0.25,False,Small sample warning (12 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Lhuan Pretorius,10,2,102.9,330.0,227.1,11.8,70.0,2,1.0,16.5,6,0.667,11.7,0.333,False,Small sample warning (10 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Maheesh Theekshana,73,25,69.5,50.7,-18.8,6.1,2.7,15,0.6,2.5,9,0.529,10.1,0.071,True,Robust sample (73 balls across 25 inns). Highly statistically reliable.,0.1371,0.0972
+Murugan Ashwin,3,2,109.1,0.0,-109.1,18.2,0.0,1,0.5,0.0,1,0.333,12.0,0.167,False,Small sample warning (3 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Nandre Burger,17,4,46.2,105.9,59.7,0.0,5.9,2,0.5,9.0,1,0.333,6.0,0.167,False,Small sample warning (17 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Nathan Coulter Nile,2,1,n/a,50.0,n/a,n/a,0.0,0,0.0,n/a,0,n/a,n/a,n/a,False,Small sample warning (2 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Navdeep Saini,2,1,n/a,100.0,n/a,n/a,0.0,1,1.0,2.0,0,n/a,n/a,n/a,False,Small sample warning (2 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Nitish Rana,109,28,117.5,289.0,171.5,15.7,56.9,25,0.893,12.6,21,0.438,42.5,0.455,True,Robust sample (109 balls across 28 inns). Highly statistically reliable.,0.3117,0.2444
+Obed McCoy,5,1,76.9,160.0,83.1,12.8,20.0,0,0.0,n/a,3,0.429,10.0,-0.429,False,Small sample warning (5 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Prasidh Krishna,5,1,70.6,40.0,-30.6,5.9,0.0,1,1.0,2.0,0,0.0,n/a,1.0,False,Small sample warning (5 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Rassie van der Dussen,70,14,88.7,241.4,152.7,6.9,38.6,10,0.714,16.9,6,0.333,36.7,0.381,True,Robust sample (70 balls across 14 inns). Highly statistically reliable.,0.5512,0.3858
+Ravi Bishnoi,31,14,77.9,132.3,54.4,8.8,19.4,10,0.714,4.1,6,0.375,8.8,0.339,True,Moderate sample (31 balls across 14 inns). Reliable trend indicators.,-0.652,-0.3314
+Ravi Singh,0,0,200.0,n/a,n/a,50.0,n/a,0,n/a,n/a,1,1.0,4.0,n/a,False,Small sample warning (0 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Ravichandran Ashwin,94,24,108.9,171.3,62.4,11.5,22.3,12,0.5,13.4,12,0.522,21.3,-0.022,True,Robust sample (94 balls across 24 inns). Highly statistically reliable.,2.0399,1.5464
+Ravindra Jadeja,385,54,109.9,160.0,50.1,9.6,21.3,29,0.537,21.2,10,0.217,67.8,0.32,True,Robust sample (385 balls across 54 inns). Highly statistically reliable.,-0.5825,-0.5404
+Riyan Parag,277,49,121.8,218.1,96.3,13.5,35.7,40,0.816,15.1,16,0.286,62.8,0.53,True,Robust sample (277 balls across 49 inns). Highly statistically reliable.,-1.3713,-1.2373
+Rovman Powell,421,69,106.4,233.3,126.9,11.1,39.0,49,0.71,20.0,32,0.337,40.8,0.373,True,Robust sample (421 balls across 69 inns). Highly statistically reliable.,0.2138,0.1996
+Sam Curran,270,47,96.6,187.4,90.8,6.8,29.3,36,0.766,14.1,10,0.213,56.7,0.553,True,Robust sample (270 balls across 47 inns). Highly statistically reliable.,-1.6191,-1.4572
+Sandeep Sharma,6,1,85.7,33.3,-52.4,0.0,0.0,0,0.0,n/a,0,0.0,n/a,0.0,False,Small sample warning (6 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Sanju Samson,314,63,135.8,236.9,101.1,18.8,42.0,49,0.778,15.2,54,0.474,48.5,0.304,True,Robust sample (314 balls across 63 inns). Highly statistically reliable.,0.3107,0.2836
+Shimron Hetmyer,438,68,122.3,188.1,65.8,14.5,28.5,47,0.691,17.5,23,0.295,45.6,0.396,True,Robust sample (438 balls across 68 inns). Highly statistically reliable.,-0.8836,-0.8269
+Shubham Dubey,55,11,137.6,167.3,29.7,16.1,27.3,7,0.636,13.1,3,0.231,42.7,0.405,True,Moderate sample (55 balls across 11 inns). Reliable trend indicators.,-1.4993,-0.9701
+Sushant Mishra,3,1,n/a,33.3,n/a,n/a,0.0,0,0.0,n/a,0,n/a,n/a,n/a,False,Small sample warning (3 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Tanush Kotian,2,1,66.7,200.0,133.3,6.7,50.0,1,1.0,4.0,0,0.0,n/a,1.0,False,Small sample warning (2 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Tom Kohler,7,2,59.6,285.7,226.1,6.4,71.4,2,1.0,10.0,1,0.333,28.0,0.667,False,Small sample warning (7 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Trent Boult,54,14,93.3,129.6,36.3,10.0,13.0,5,0.357,14.0,2,0.25,14.0,0.107,True,Moderate sample (54 balls across 14 inns). Reliable trend indicators.,0.7228,0.4647
+Tushar Deshpande,8,5,166.7,37.5,-129.2,16.7,0.0,0,0.0,n/a,3,0.75,10.0,-0.75,False,Small sample warning (8 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Vaibhav Sooryavanshi,99,18,177.6,421.2,243.6,28.9,79.8,16,0.889,26.1,19,0.559,57.5,0.33,True,Robust sample (99 balls across 18 inns). Highly statistically reliable.,2.3032,1.7676
+Wanindu Hasaranga,173,47,108.2,145.1,36.9,10.8,23.1,35,0.745,7.2,13,0.302,25.4,0.443,True,Robust sample (173 balls across 47 inns). Highly statistically reliable.,-1.6597,-1.4145
+Yashasvi Jaiswal,209,41,125.8,360.8,235.0,18.3,77.5,35,0.854,21.5,44,0.506,48.0,0.348,True,Robust sample (209 balls across 41 inns). Highly statistically reliable.,2.0437,1.7872
+Yudhvir Singh,3,3,161.5,33.3,-128.2,23.1,0.0,3,1.0,0.3,1,0.5,21.0,0.5,False,Small sample warning (3 < 30 balls). High variance; interpret with caution.,n/a,n/a
+Yuzvendra Chahal,1,1,66.7,0.0,-66.7,0.0,0.0,0,0.0,n/a,1,0.5,6.0,-0.5,False,Small sample warning (1 < 30 balls). High variance; interpret with caution.,n/a,n/a
