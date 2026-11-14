@@ -1,47 +1,43 @@
 """
-Pressure Performance Analytics, Expected-Value Baseline & Dual Ranking Engine
+Rajasthan Royals & Global T20 Pressure Analytics Engine
+Three Ranking Sets: RR Players, Next Season Eligible, All Players (Tiered Thresholds)
 Part of SupeRR Selector: Rajasthan Royals Pressure Analysis
 
-Methodology & Framework:
------------------------
-1. Task 1: Expected-Value Baselines (ALL 2022+ IPL & T20I Deliveries):
-   - Innings 2 (Chase): Bucketed by:
-       * balls_remaining: [1-6, 7-12, 13-24, 25-36, 37-60, 61-120]
-       * required_run_rate (RRR): 0.5 steps (<6.0, 6.0-6.5, ..., 15.5-16.0, 16.0+)
-       * wickets_in_hand: [1-3, 4-6, 7-10]
-     Calculates average runs per ball, dot-ball rate, boundary rate, and dismissal rate (batters)
-     as well as runs conceded and wicket rates (bowlers) per bucket.
-   - Innings 1: Bucketed by balls_remaining, over_stage (Powerplay 1-6, Middle 7-15, Death 16-20),
-     and venue par (average first-innings total by venue and season: Low <165, Medium 165-185, High >185).
-   - Saved as data/expected_tables.csv.
+Framework & Requirements:
+-------------------------
+1. Step 1: Data Audit & Confirmation:
+   - Reads ball_by_ball, matches, competitions, teams, competition_team_player_mapping, playing_eleven.
+   - Identifies Rajasthan Royals team_id == 3 from team names.
+   - Maps player nationality across all 1,217 players (preserving Pakistan players in the pool).
+   - Confirms most recent season (2026).
 
-2. Task 2: Pressure Definitions:
-   - Batting Pressure: Innings 2 deliveries with RRR >= 9.0 OR death overs (overs 16-20 / balls remaining <= 30)
-     in either innings.
-   - Bowling Pressure: Innings 2 deliveries in the core RRR band [8.0, 12.0] (with balls remaining > 6),
-     plus the last over of either innings (balls remaining 1-6) as a separate component.
-     A ball in both counts once under the last-over component (mutually exclusive).
-   - Win-probability swing (top 15% swings) is computed as an empirical robustness benchmark.
+2. Step 2 & 3: Three Ranking Sets & Tiered Minimum Sample Thresholds:
+   - Set 1 (RR Players): Appeared for Rajasthan Royals (team_id == 3).
+     * Thresholds: MIN_BALLS_BATTER_RR = 30 pressure balls; MIN_BALLS_BOWLER_RR = 24 band balls.
+     * Shrinkage: k = 30 (batters), k = 24 (bowlers).
+   - Set 2 (Next Season Eligible): Appeared in the most recent two seasons (2025 and 2026), including RR.
+     * RR players use RR thresholds (30 / 24) and k = (30 / 24).
+     * Non-RR players use higher thresholds: MIN_BALLS_BATTER_NON_RR = 60, MIN_BALLS_BOWLER_NON_RR = 48, and k = (60 / 48).
+   - Set 3 (All Players): Every player in the competition dataset.
+     * RR players use RR thresholds (30 / 24) and k = (30 / 24).
+     * Non-RR players use higher thresholds (60 / 48) and k = (60 / 48).
 
-3. Task 3: Batter Ratings:
-   - Evaluates runs above expected per 100 pressure balls.
-   - Computes excess dismissals and dismissal penalty: excess_dismissals_per_inns * exp_runs_per_inns.
-   - Raw Rating = z(runs_above_expected_per_100) - z(dismissal_penalty).
-   - Bayesian shrinkage toward zero: adjusted_rating = (pressure_balls * raw_rating) / (pressure_balls + 30).
-   - Qualification threshold: at least 30 pressure balls.
+3. Step 4 & 5: Expected-Value Baselines & Pressure Definitions:
+   - Common baseline across all 198,032 qualifying deliveries across 413 game-state buckets.
+   - Saved to data/expected_tables.csv.
+   - Batting pressure: chase RRR >= 9.0 or death overs (overs 16-20) in either innings.
+   - Bowling pressure: chase RRR 8.0-12.0 core band and last-over component (balls rem 1-6) without double-counting.
 
-4. Task 4: Bowler Ratings:
-   - Core Band: runs_saved_per_over (expected minus actual conceded) and wicket_component
-     (wickets gained above expected, weighted by bucket runs per wicket).
-   - Last Over: separate runs saved and wicket component evaluated against last-over buckets.
-   - Dot-ball difference is reported as a descriptive metric.
-   - Raw Rating = z(runs_saved_per_over) + z(wicket_component) + 0.5 * z(last_over_component).
-   - Bayesian shrinkage toward zero: adjusted_rating = (pressure_balls * raw_rating) / (pressure_balls + 24).
-   - Qualification threshold: at least 24 balls in the 8-12 band (and >= 12 balls for full last-over component).
+4. Step 6 & 7: Ratings & Output CSVs:
+   - Within each set, standardized z-scores and Bayesian shrinkage are applied.
+   - Generates full per-player tables: batters_rr.csv, bowlers_rr.csv, batters_next_season.csv,
+     bowlers_next_season.csv, batters_all.csv, bowlers_all.csv.
+   - Generates top-10 tables: top10_rr_batters.csv, top10_rr_bowlers.csv, top10_next_season_batters.csv,
+     top10_next_season_bowlers.csv, top10_all_batters.csv, top10_all_bowlers.csv.
 
-5. Task 5: Z-Scores and Dual Pools:
-   - Set A (All Players): z-scores standardizing against all qualifying players in the global dataset.
-   - Set B (RR Players): z-scores standardizing against qualifying Rajasthan Royals players.
+5. Step 8: Sanity Checks:
+   - Confirms dismissals strictly lower batter ratings and runs conceded strictly lower bowler ratings.
+   - Confirms no non-RR player in any top 10 has <60 pressure balls (batters) or <48 band balls (bowlers).
 """
 
 import os
@@ -49,12 +45,19 @@ import json
 import pandas as pd
 import numpy as np
 
-# Minimum sample constants
-MIN_SAMPLE_BATTER_BALLS = 30
-MIN_SAMPLE_BOWLER_BAND_BALLS = 24
-MIN_SAMPLE_BOWLER_LO_BALLS = 12
-SHRINKAGE_K_BATTER = 30.0
-SHRINKAGE_K_BOWLER = 24.0
+# =========================================================================
+# STEP 3: NAMED MINIMUM BALL THRESHOLDS & SHRINKAGE CONSTANTS
+# =========================================================================
+MIN_BALLS_BATTER_RR = 30          # RR Batters: min 30 pressure balls
+MIN_BALLS_BOWLER_RR = 24          # RR Bowlers: min 24 balls in 8-12 bowling band
+MIN_BALLS_BATTER_NON_RR = 60      # Non-RR Batters: raised to 60 pressure balls
+MIN_BALLS_BOWLER_NON_RR = 48      # Non-RR Bowlers: raised to 48 balls in 8-12 bowling band
+
+SHRINKAGE_K_BATTER_RR = 30.0      # Prior weight for RR batters
+SHRINKAGE_K_BATTER_NON_RR = 60.0  # Prior weight for Non-RR batters
+SHRINKAGE_K_BOWLER_RR = 24.0      # Prior weight for RR bowlers
+SHRINKAGE_K_BOWLER_NON_RR = 48.0  # Prior weight for Non-RR bowlers
+MIN_SAMPLE_BOWLER_LO_BALLS = 12   # Minimum last-over balls for last-over component
 
 def run_pressure_pipeline(data_dir=None, output_dir=None):
     if data_dir is None:
@@ -64,16 +67,157 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    matches_path = os.path.join(data_dir, "matches.csv")
-    bbb_path = os.path.join(data_dir, "ball_by_ball.csv")
-    mapping_path = os.path.join(data_dir, "competition_team_player_mapping.csv")
+    # Check for updated ball_by_ball in Downloads
+    updated_bbb_path = os.path.join(os.path.expanduser("~"), "Downloads", "6af855c0e8386_ball_by_ball.csv")
+    if os.path.exists(updated_bbb_path):
+        bbb_path = updated_bbb_path
+        print(f"Using updated ball_by_ball dataset: {bbb_path}")
+    else:
+        bbb_path = os.path.join(data_dir, "ball_by_ball.csv")
+        print(f"Using default ball_by_ball dataset: {bbb_path}")
 
+    matches_path = os.path.join(data_dir, "matches.csv")
+    mapping_path = os.path.join(data_dir, "competition_team_player_mapping.csv")
+    comp_path = os.path.join(data_dir, "competitions.csv")
+    teams_path = os.path.join(data_dir, "teams.csv")
+    p11_path = os.path.join(data_dir, "playing_eleven.csv")
+
+    # =========================================================================
+    # STEP 1: INSPECT AND CONFIRM THE DATA
+    # =========================================================================
+    print("\n===================================================================")
+    print("STEP 1: INSPECT AND CONFIRM THE DATA")
     print("===================================================================")
-    print("STEP 1: LOAD & PREPARE COMPETITION DATASETS (Task 1)")
-    print("===================================================================")
+
     matches = pd.read_csv(matches_path)
     bbb = pd.read_csv(bbb_path)
     mapping = pd.read_csv(mapping_path)
+    comp = pd.read_csv(comp_path)
+    teams = pd.read_csv(teams_path)
+    p11 = pd.read_csv(p11_path)
+
+    # 1. Confirm Team ID and Name for Rajasthan Royals
+    rr_team_rows = teams[teams["team_name"].str.contains("Rajasthan Royals", case=False, na=False)]
+    rr_team_ids = rr_team_rows["team_id"].unique().tolist()
+    print(f"Confirmed Rajasthan Royals Team ID(s) from teams.csv: {rr_team_ids}")
+    rr_team_id = rr_team_ids[0]
+
+    # Verify against matches.csv
+    rr_matches = matches[(matches["home_team_id"] == rr_team_id) | (matches["away_team_id"] == rr_team_id)]
+    rr_home_names = rr_matches[rr_matches["home_team_id"] == rr_team_id]["home_team"].unique().tolist()
+    rr_away_names = rr_matches[rr_matches["away_team_id"] == rr_team_id]["away_team"].unique().tolist()
+    print(f"Confirmed Rajasthan Royals Names in matches.csv: home={rr_home_names}, away={rr_away_names}")
+
+    # 2. Season field and Most Recent Season
+    comp["season_clean"] = comp["season"].astype(str).str.strip()
+    all_seasons = sorted(comp["season_clean"].unique())
+    most_recent_season = all_seasons[-1]
+    second_recent_season = all_seasons[-2]
+    print(f"Distinct seasons in data: {all_seasons}")
+    print(f"Most recent season: '{most_recent_season}' | Preceding season: '{second_recent_season}'")
+
+    # 3. Nationality Mapping
+    overseas_ipl = {
+        "Faf du Plessis": "South Africa",
+        "Sunil Narine": "West Indies",
+        "Joe Root": "England",
+        "David Wiese": "Namibia",
+        "Andrew Tye": "Australia",
+        "Tom Kohler": "England",
+        "Thomas Curran": "England",
+        "Duan Jansen": "South Africa",
+        "Gideon Peters": "South Africa",
+        "Nathan Coulter Nile": "Australia",
+        "Benny Howell": "England",
+        "Dwayne Bravo": "West Indies",
+        "Nathan Bracken": "Australia"
+    }
+
+    nat_team_clean = {
+        "Afghanistan": "Afghanistan", "Afghanistan A": "Afghanistan",
+        "Australia": "Australia",
+        "Bangladesh": "Bangladesh", "Bangladesh A": "Bangladesh",
+        "Canada": "Canada",
+        "England": "England",
+        "Hong Kong": "Hong Kong",
+        "India": "India", "India A": "India",
+        "Ireland": "Ireland",
+        "Japan": "Japan",
+        "Kuwait": "Kuwait",
+        "Nepal": "Nepal",
+        "Netherlands": "Netherlands",
+        "New Zealand": "New Zealand",
+        "Oman": "Oman",
+        "Pakistan": "Pakistan", "Pakistan A": "Pakistan",
+        "Scotland": "Scotland",
+        "Singapore": "Singapore",
+        "South Africa": "South Africa",
+        "Sri Lanka": "Sri Lanka", "Sri Lanka A": "Sri Lanka",
+        "United Arab Emirates": "United Arab Emirates",
+        "United States Of America": "USA",
+        "West Indies": "West Indies",
+        "Zimbabwe": "Zimbabwe"
+    }
+
+    player_nats = {}
+    p_teams = mapping.groupby("player_id")["team_name"].unique().apply(lambda ts: ", ".join(sorted(set(ts)))).to_dict()
+    p_names = mapping.groupby("player_id")["player_name"].first().to_dict()
+
+    for pid, group in mapping.groupby("player_id"):
+        pname = group["player_name"].iloc[0]
+        ts = group["team_name"].unique()
+        nat = None
+        for t in ts:
+            if t in nat_team_clean:
+                nat = nat_team_clean[t]
+                break
+        if not nat:
+            if pname in overseas_ipl:
+                nat = overseas_ipl[pname]
+            else:
+                nat = "India"
+        player_nats[pid] = nat
+
+    nat_counts = pd.Series(player_nats).value_counts()
+    print("\nPlayer Count by Nationality (Pakistan players included in pool):")
+    for nat, count in nat_counts.items():
+        print(f"  {nat:24s}: {count}")
+
+    # =========================================================================
+    # STEP 2: DEFINE THE THREE RANKING SETS
+    # =========================================================================
+    print("\n===================================================================")
+    print("STEP 2: DEFINE THE THREE RANKING SETS")
+    print("===================================================================")
+
+    # Set 1: RR players (appeared for Rajasthan Royals in mapping or ball_by_ball)
+    rr_pids = set(mapping[mapping["team_id"] == rr_team_id]["player_id"].dropna().unique())
+    rr_bbb_pids = set(bbb[bbb["batting_team_id"] == rr_team_id]["striker_id"].dropna().unique()) | set(bbb[bbb["bowling_team_id"] == rr_team_id]["bowler_id"].dropna().unique())
+    set1_pids = rr_pids | rr_bbb_pids
+
+    # Set 2: Players eligible for next season (proxy: appeared in most recent two seasons: 2025 and 2026, including RR)
+    recent_comp_ids = set(comp[comp["season_clean"].isin(["2025", "2024/25", "2026"])]["comp_id"].unique())
+    recent_matches = set(matches[matches["comp_id"].isin(recent_comp_ids)]["match_id"].unique())
+
+    set2_mapping_pids = set(mapping[mapping["comp_id"].isin(recent_comp_ids)]["player_id"].dropna().unique())
+    set2_bbb_pids = set(bbb[bbb["match_id"].isin(recent_matches)]["striker_id"].dropna().unique()) | set(bbb[bbb["match_id"].isin(recent_matches)]["bowler_id"].dropna().unique())
+    set2_pids = set2_mapping_pids | set2_bbb_pids
+
+    # Set 3: All players in the dataset
+    all_mapping_pids = set(mapping["player_id"].dropna().unique())
+    all_bbb_pids = set(bbb["striker_id"].dropna().unique()) | set(bbb["bowler_id"].dropna().unique())
+    set3_pids = all_mapping_pids | all_bbb_pids
+
+    print(f"Set 1 (RR Players)                 : {len(set1_pids)} players")
+    print(f"Set 2 (Next Season Eligible - 25/26): {len(set2_pids)} players (Proxy for next season eligibility)")
+    print(f"Set 3 (All Players - Global)        : {len(set3_pids)} players")
+
+    # =========================================================================
+    # STEP 4: EXPECTED-VALUE TABLES & GAME-STATE BUCKETING
+    # =========================================================================
+    print("\n===================================================================")
+    print("STEP 4: EXPECTED-VALUE TABLES (ALL QUALIFYING DATA)")
+    print("===================================================================")
 
     # Filter out no-result, tied, or abandoned matches
     drop_mask = (
@@ -82,14 +226,11 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
         | matches["result"].str.contains(r"no\s*result|tie|abandon", case=False, na=False)
     )
     matches_valid = matches[~drop_mask].copy()
-    print(f"Total matches: {len(matches)} | Kept: {len(matches_valid)} | Dropped: {drop_mask.sum()}")
 
-    # Total runs per ball (runs off bat + extras)
     bbb["total_ball_runs"] = bbb["runs"] + bbb["extras1_runs"] + bbb["extras_2_runs"]
     inn1_totals = bbb[bbb["innings"] == 1].groupby("match_id")["total_ball_runs"].sum().rename("inn1_total")
     matches_valid = matches_valid.merge(inn1_totals, on="match_id", how="inner")
 
-    # D/L Target handling & balls allowed
     matches_valid["target"] = np.where(
         matches_valid["revised_target"].notna() & (matches_valid["revised_target"] > 0),
         matches_valid["revised_target"],
@@ -106,7 +247,7 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
     )
     matches_valid["year"] = pd.to_datetime(matches_valid["match_date"]).dt.year
 
-    # Venue par calculation (average first-innings total by venue and season/year)
+    # Venue par calculation
     vp_season = matches_valid.groupby(["venue_id", "year"])["inn1_total"].mean().rename("venue_par_season")
     vp_venue = matches_valid.groupby("venue_id")["inn1_total"].mean().rename("venue_par_venue")
     overall_par = matches_valid["inn1_total"].mean()
@@ -120,17 +261,9 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
     matches_valid["venue_par_bucket"] = pd.cut(matches_valid["venue_par"], bins=vp_bins, labels=vp_labels).astype(str)
 
     # Merge ball_by_ball with match state
-    match_cols = ["match_id", "target", "total_balls", "win_team_id", "match_date", "year", "venue_id", "venue_par", "venue_par_bucket"]
+    match_cols = ["match_id", "target", "total_balls", "win_team_id", "match_date", "year", "comp_id", "venue_par", "venue_par_bucket"]
     df = bbb.merge(matches_valid[match_cols], on="match_id", how="inner")
     df = df.sort_values(["match_id", "innings", "innings_ball_num"]).reset_index(drop=True)
-
-    # Player mappings & teams
-    p_teams = mapping.groupby("player_id")["team_name"].unique().apply(lambda ts: ", ".join(sorted(set(ts)))).to_dict()
-    p_names = mapping.groupby("player_id")["player_name"].first().to_dict()
-
-    # Identify Rajasthan Royals squad players (team_id == 3 confirmed as Rajasthan Royals)
-    rr_pids = set(mapping[mapping["team_id"] == 3]["player_id"].dropna().unique())
-    print(f"Identified {len(rr_pids)} registered Rajasthan Royals players.")
 
     # Bowler extras & runs conceded
     df["bowler_extras"] = np.where(df["extras_type"].isin(["byes", "legbyes", "Penalty"]), 0, df["extras1_runs"])
@@ -138,24 +271,21 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
     df["is_legal_ball"] = ~df["extras_type"].isin(["wide", "Overstep"])
     df["bowler_wicket"] = df["is_wicket"] & ~df["dismissal_type"].astype(str).str.contains("run out", case=False, na=False)
 
-    # Batter dismissal (batter on strike dismissed)
+    # Batter dismissal
     df["batter_dismissal"] = df["is_wicket"] & (
         (df["dismissed_player_id"] == df["striker_id"])
         | df["dismissed_player_id"].isna()
         | (df["dismissal_type"] != "run out")
     )
 
-    # Cumulative stats by match and innings
+    # Cumulative stats
     df["cum_runs_after"] = df.groupby(["match_id", "innings"])["total_ball_runs"].cumsum()
     df["cum_runs_before"] = df["cum_runs_after"] - df["total_ball_runs"]
 
     df["cum_wickets_after"] = df.groupby(["match_id", "innings"])["is_wicket"].cumsum()
     df["cum_wickets_before"] = df["cum_wickets_after"] - df["is_wicket"].astype(int)
 
-    # Balls remaining before delivery
     df["balls_remaining_before"] = np.maximum(df["total_balls"] - (df["innings_ball_num"] - 1), 1)
-
-    # State for chase (innings 2)
     df["runs_needed_before"] = df["target"] - df["cum_runs_before"]
     df["wickets_in_hand_before"] = np.clip(10 - df["cum_wickets_before"], 1, 10)
     df["rrr"] = np.where(
@@ -164,10 +294,7 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
         np.nan
     )
 
-    # =========================================================================
-    # TASK 1: BUCKETING & EXPECTED VALUE TABLES
-    # =========================================================================
-    print("\n--- Constructing Expected Value Buckets ---")
+    # Buckets:
     # 1. balls_rem_bucket: 1-6, 7-12, 13-24, 25-36, 37-60, 61-120
     br_bins = [0, 6, 12, 24, 36, 60, 150]
     br_labels = ["1-6", "7-12", "13-24", "25-36", "37-60", "61-120"]
@@ -196,9 +323,7 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
         "inn1_" + df["balls_rem_bucket"] + "_stage_" + df["over_stage"] + "_vp_" + df["venue_par_bucket"]
     )
 
-    print(f"Total distinct game-state buckets: {df['bucket_id'].nunique()}")
-
-    # Compute expected tables across ALL qualifying matches
+    # Expected values table
     exp_table = df.groupby("bucket_id", observed=True).agg(
         innings=("innings", "first"),
         balls_rem_bucket=("balls_rem_bucket", "first"),
@@ -232,9 +357,9 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
 
     exp_csv_path = os.path.join(output_dir, "expected_tables.csv")
     exp_table.to_csv(exp_csv_path, index=False)
-    print(f"Saved expected values table ({len(exp_table)} buckets) to: {exp_csv_path}")
+    print(f"Saved {len(exp_table)} game-state buckets to {exp_csv_path}")
 
-    # Map expected values back to deliveries
+    # Map back to deliveries
     exp_lookup = exp_table.set_index("bucket_id")[
         ["batter_avg_runs_per_ball", "batter_dismissal_rate", "bowler_avg_runs_per_ball", "bowler_wicket_rate", "bowler_dot_pct", "runs_per_wicket"]
     ].to_dict("index")
@@ -247,20 +372,20 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
     df["runs_per_wicket"] = df["bucket_id"].map(lambda b: exp_lookup[b]["runs_per_wicket"])
 
     # =========================================================================
-    # TASK 2: DEFINE PRESSURE SITUATIONS
+    # STEP 5: PRESSURE DEFINITIONS
     # =========================================================================
-    print("\n--- Applying Pressure Definitions (Task 2) ---")
-    # Batting Pressure: Innings 2 RRR >= 9.0 OR death overs (overs 16-20 / balls remaining <= 30) in either innings
+    print("\n===================================================================")
+    print("STEP 5: PRESSURE DEFINITIONS")
+    print("===================================================================")
+
+    # Batting pressure: 2nd innings RRR >= 9.0 OR overs 16-20 in either innings
     df["is_batting_pressure"] = (
         ((df["innings"] == 2) & ((df["rrr"] >= 9.0) | (df["balls_remaining_before"] <= 30) | (df["overid"] >= 16)))
         | ((df["innings"] == 1) & ((df["balls_remaining_before"] <= 30) | (df["overid"] >= 16)))
     )
 
-    # Bowling Pressure:
-    # 1. Last over of either innings (balls remaining 1-6)
+    # Bowling pressure: last-over (balls rem 1-6) + core band (RRR 8-12, balls rem > 6)
     df["is_last_over"] = df["balls_remaining_before"] <= 6
-    # 2. Core band: Innings 2, RRR 8.0-12.0, balls remaining > 6
-    # Mutually exclusive: a ball qualifying for both counts once under last-over
     df["is_bowling_band"] = (df["innings"] == 2) & (df["rrr"] >= 8.0) & (df["rrr"] <= 12.0) & (~df["is_last_over"])
     df["is_bowling_pressure"] = df["is_last_over"] | df["is_bowling_band"]
 
@@ -270,19 +395,21 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
     print(f"Total bowling pressure deliveries: {df['is_bowling_pressure'].sum()}")
 
     # =========================================================================
-    # TASK 3: BATTER PERFORMANCE METRICS
+    # EVALUATE ALL PLAYERS' BASELINE METRICS
     # =========================================================================
-    print("\n--- Calculating Batter Pressure Metrics (Task 3) ---")
+    print("\n--- Aggregating Player Delivery Outcomes ---")
     bat_press = df[df["is_batting_pressure"]].copy()
     bat_norm = df[~df["is_batting_pressure"]].copy()
 
-    batter_stats = []
     all_strikers = sorted(df["striker_id"].dropna().unique())
+    batter_stats = []
 
     for pid in all_strikers:
         p_name = p_names.get(pid, f"Player_{pid}")
+        p_nat = player_nats.get(pid, "Unknown")
         p_team = p_teams.get(pid, "Unknown")
-        is_rr = pid in rr_pids
+        is_rr = pid in set1_pids
+        in_set2 = pid in set2_pids
 
         b_p = bat_press[bat_press["striker_id"] == pid]
         b_n = bat_norm[bat_norm["striker_id"] == pid]
@@ -318,19 +445,13 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
         n_d_rate = b_n["batter_dismissal"].sum() / n_inns if n_inns > 0 else np.nan
         d_diff = p_d_rate - n_d_rate if pd.notna(p_d_rate) and pd.notna(n_d_rate) else np.nan
 
-        qualifies = p_balls >= MIN_SAMPLE_BATTER_BALLS
-        if p_balls >= 60:
-            rel = f"Robust sample ({p_balls} balls across {p_inns} inns). Highly reliable."
-        elif p_balls >= MIN_SAMPLE_BATTER_BALLS:
-            rel = f"Moderate sample ({p_balls} balls across {p_inns} inns). Reliable trend."
-        else:
-            rel = f"Small sample warning ({p_balls} < {MIN_SAMPLE_BATTER_BALLS} balls). High variance."
-
         batter_stats.append({
             "player_id": pid,
             "player": p_name,
+            "nationality": p_nat,
             "teams": p_team,
             "is_rr": is_rr,
+            "in_set2": in_set2,
             "pressure_balls": p_balls,
             "pressure_innings": p_inns,
             "actual_runs": act_runs,
@@ -350,27 +471,24 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
             "pressure_dismissal_rate": round(p_d_rate, 3) if pd.notna(p_d_rate) else "n/a",
             "normal_dismissal_rate": round(n_d_rate, 3) if pd.notna(n_d_rate) else "n/a",
             "dismissal_difference": round(d_diff, 3) if pd.notna(d_diff) else "n/a",
-            "qualifies": qualifies,
-            "reliability_note": rel
         })
 
-    bat_df = pd.DataFrame(batter_stats)
+    bat_master_df = pd.DataFrame(batter_stats)
 
-    # =========================================================================
-    # TASK 4: BOWLER PERFORMANCE METRICS
-    # =========================================================================
-    print("\n--- Calculating Bowler Pressure Metrics (Task 4) ---")
+    # Bowler Stats Aggregation
     bw_band = df[df["is_bowling_band"]].copy()
     bw_lo = df[df["is_last_over"]].copy()
     bw_norm = df[~df["is_bowling_pressure"]].copy()
 
-    bowler_stats = []
     all_bowlers = sorted(df["bowler_id"].dropna().unique())
+    bowler_stats = []
 
     for pid in all_bowlers:
         p_name = p_names.get(pid, f"Player_{pid}")
+        p_nat = player_nats.get(pid, "Unknown")
         p_team = p_teams.get(pid, "Unknown")
-        is_rr = pid in rr_pids
+        is_rr = pid in set1_pids
+        in_set2 = pid in set2_pids
 
         b_b = bw_band[bw_band["bowler_id"] == pid]
         b_l = bw_lo[bw_lo["bowler_id"] == pid]
@@ -399,6 +517,10 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
             b_exp_dots = b_b["exp_bowler_dot_pct"].mean()
             dot_diff = b_act_dots - b_exp_dots
         else:
+            b_act_runs = 0
+            b_exp_runs = 0.0
+            b_act_wkts = 0
+            b_exp_wkts = 0.0
             runs_saved_po = 0.0
             wkt_comp = 0.0
             dot_diff = 0.0
@@ -415,219 +537,298 @@ def run_pressure_pipeline(data_dir=None, output_dir=None):
             lo_wkt_comp = ((b_l["bowler_wicket"] - b_l["exp_bowler_wicket"]) * b_l["runs_per_wicket"]).sum() / lo_overs
             lo_score = lo_runs_saved + lo_wkt_comp
         else:
+            lo_act_runs = 0
+            lo_exp_runs = 0.0
+            lo_act_wkts = 0
+            lo_exp_wkts = 0.0
             lo_runs_saved = 0.0
             lo_wkt_comp = 0.0
             lo_score = 0.0
 
-        qualifies = n_band >= MIN_SAMPLE_BOWLER_BAND_BALLS
         lo_qualifies = n_lo >= MIN_SAMPLE_BOWLER_LO_BALLS
-
-        if n_band >= 48:
-            rel = f"Robust sample ({n_band} band balls, {n_lo} last-over balls). High statistical confidence."
-        elif n_band >= MIN_SAMPLE_BOWLER_BAND_BALLS:
-            rel = f"Moderate sample ({n_band} band balls, {n_lo} last-over balls). Reliable indicator."
-        else:
-            rel = f"Limited sample ({n_band} < {MIN_SAMPLE_BOWLER_BAND_BALLS} band balls). Excluded from official ranking."
 
         bowler_stats.append({
             "player_id": pid,
             "player": p_name,
+            "nationality": p_nat,
             "teams": p_team,
             "is_rr": is_rr,
+            "in_set2": in_set2,
             "pressure_balls": p_balls,
             "band_balls": n_band,
             "last_over_balls": n_lo,
+            "band_actual_runs": b_act_runs,
+            "band_expected_runs": round(b_exp_runs, 1),
+            "band_actual_wickets": b_act_wkts,
+            "band_expected_wickets": round(b_exp_wkts, 2),
             "runs_saved_per_over": round(runs_saved_po, 2),
             "wicket_component": round(wkt_comp, 2),
             "dot_difference": round(dot_diff, 1),
+            "last_over_actual_runs": lo_act_runs,
+            "last_over_expected_runs": round(lo_exp_runs, 1),
+            "last_over_actual_wickets": lo_act_wkts,
+            "last_over_expected_wickets": round(lo_exp_wkts, 2),
             "last_over_runs_saved": round(lo_runs_saved, 2),
             "last_over_wicket_component": round(lo_wkt_comp, 2),
             "last_over_score": round(lo_score, 2),
-            "qualifies": qualifies,
             "lo_qualifies": lo_qualifies,
-            "reliability_note": rel
         })
 
-    bw_df = pd.DataFrame(bowler_stats)
+    bw_master_df = pd.DataFrame(bowler_stats)
 
     # =========================================================================
-    # TASK 5: DUAL RANKING ENGINE (Set A: All Players, Set B: RR Players)
-    # =========================================================================
-    print("\n--- Standardizing Z-Scores & Bayesian Shrinkage (Task 5) ---")
-
-    def score_batter_pool(df_pool):
-        df_out = df_pool.copy()
-        q = df_out[df_out["qualifies"]].copy()
-        if len(q) == 0:
-            df_out["raw_rating"] = "n/a"
-            df_out["adjusted_rating"] = "n/a"
-            return df_out
-
-        r_mean, r_std = q["runs_above_expected_per_100"].mean(), q["runs_above_expected_per_100"].std(ddof=0)
-        d_mean, d_std = q["dismissal_penalty"].mean(), q["dismissal_penalty"].std(ddof=0)
-        if r_std == 0: r_std = 1.0
-        if d_std == 0: d_std = 1.0
-
-        q["z_runs"] = (q["runs_above_expected_per_100"] - r_mean) / r_std
-        q["z_dismissal"] = (q["dismissal_penalty"] - d_mean) / d_std
-        q["raw_rating"] = q["z_runs"] - q["z_dismissal"]
-        q["adjusted_rating"] = (q["pressure_balls"] * q["raw_rating"]) / (q["pressure_balls"] + SHRINKAGE_K_BATTER)
-
-        df_out = df_out.merge(q[["player_id", "z_runs", "z_dismissal", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
-        df_out["raw_rating"] = df_out["raw_rating"].round(4)
-        df_out["adjusted_rating"] = df_out["adjusted_rating"].round(4)
-        return df_out
-
-    def score_bowler_pool(df_pool):
-        df_out = df_pool.copy()
-        q = df_out[df_out["qualifies"]].copy()
-        if len(q) == 0:
-            df_out["raw_rating"] = "n/a"
-            df_out["adjusted_rating"] = "n/a"
-            return df_out
-
-        rs_mean, rs_std = q["runs_saved_per_over"].mean(), q["runs_saved_per_over"].std(ddof=0)
-        w_mean, w_std = q["wicket_component"].mean(), q["wicket_component"].std(ddof=0)
-        if rs_std == 0: rs_std = 1.0
-        if w_std == 0: w_std = 1.0
-
-        q["z_runs_saved"] = (q["runs_saved_per_over"] - rs_mean) / rs_std
-        q["z_wicket"] = (q["wicket_component"] - w_mean) / w_std
-
-        # Standardize last-over component across bowlers with >= 12 last-over balls
-        q_lo = q[q["lo_qualifies"]]
-        if len(q_lo) > 0 and q_lo["last_over_score"].std(ddof=0) > 0:
-            lo_mean = q_lo["last_over_score"].mean()
-            lo_std = q_lo["last_over_score"].std(ddof=0)
-            q["z_last_over"] = np.where(q["lo_qualifies"], (q["last_over_score"] - lo_mean) / lo_std, 0.0)
-        else:
-            q["z_last_over"] = 0.0
-
-        q["raw_rating"] = q["z_runs_saved"] + q["z_wicket"] + 0.5 * q["z_last_over"]
-        q["adjusted_rating"] = (q["pressure_balls"] * q["raw_rating"]) / (q["pressure_balls"] + SHRINKAGE_K_BOWLER)
-
-        df_out = df_out.merge(q[["player_id", "z_runs_saved", "z_wicket", "z_last_over", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
-        df_out["raw_rating"] = df_out["raw_rating"].round(4)
-        df_out["adjusted_rating"] = df_out["adjusted_rating"].round(4)
-        return df_out
-
-    # Set A: All Players
-    batters_all = score_batter_pool(bat_df)
-    bowlers_all = score_bowler_pool(bw_df)
-
-    # Set B: RR Players Only
-    bat_rr_pool = bat_df[bat_df["is_rr"]].copy()
-    bw_rr_pool = bw_df[bw_df["is_rr"]].copy()
-
-    batters_rr = score_batter_pool(bat_rr_pool)
-    bowlers_rr = score_bowler_pool(bw_rr_pool)
-
-    # Create Top 10 rankings
-    top10_all_b = batters_all[batters_all["qualifies"]].sort_values("adjusted_rating", ascending=False).head(10).copy()
-    top10_all_b.insert(0, "rank", range(1, len(top10_all_b) + 1))
-
-    top10_all_bw = bowlers_all[bowlers_all["qualifies"]].sort_values("adjusted_rating", ascending=False).head(10).copy()
-    top10_all_bw.insert(0, "rank", range(1, len(top10_all_bw) + 1))
-
-    top10_rr_b = batters_rr[batters_rr["qualifies"]].sort_values("adjusted_rating", ascending=False).head(10).copy()
-    top10_rr_b.insert(0, "rank", range(1, len(top10_rr_b) + 1))
-
-    top10_rr_bw = bowlers_rr[bowlers_rr["qualifies"]].sort_values("adjusted_rating", ascending=False).head(10).copy()
-    top10_rr_bw.insert(0, "rank", range(1, len(top10_rr_bw) + 1))
-
-    # =========================================================================
-    # TASK 6: SANITY CHECKS
+    # STEP 3 & 6: TIERED ELIGIBILITY & RATING PIPELINE FOR EACH SET
     # =========================================================================
     print("\n===================================================================")
-    print("TASK 6: SANITY CHECKS & VALIDATION")
+    print("STEP 3 & 6: TIERED THRESHOLDS & SET RATINGS")
     print("===================================================================")
 
-    print("\n[TOP 10 ALL BATTERS]")
-    print(top10_all_b[["rank", "player", "teams", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+    def process_batter_set(df_input, set_name, is_set1_rr_only=False):
+        df_set = df_input.copy()
 
-    print("\n[TOP 10 RR BATTERS]")
-    print(top10_rr_b[["rank", "player", "teams", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+        # Step 3: Tiered thresholds
+        # RR players use 30; non-RR players use 60
+        df_set["threshold_applied"] = np.where(df_set["is_rr"], MIN_BALLS_BATTER_RR, MIN_BALLS_BATTER_NON_RR)
+        df_set["shrinkage_k"] = np.where(df_set["is_rr"], SHRINKAGE_K_BATTER_RR, SHRINKAGE_K_BATTER_NON_RR)
+        df_set["qualifies"] = df_set["pressure_balls"] >= df_set["threshold_applied"]
 
-    print("\n[TOP 10 ALL BOWLERS]")
-    print(top10_all_bw[["rank", "player", "teams", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
+        # Reliability note
+        notes = []
+        for _, row in df_set.iterrows():
+            pb = row["pressure_balls"]
+            thresh = row["threshold_applied"]
+            inns = row["pressure_innings"]
+            if pb >= thresh * 2:
+                notes.append(f"Robust sample ({pb} balls across {inns} inns). Highly statistically reliable.")
+            elif pb >= thresh:
+                notes.append(f"Qualified sample ({pb} >= {thresh} balls across {inns} inns). Reliable trend.")
+            else:
+                notes.append(f"Limited sample ({pb} < {thresh} balls). Excluded from official ranking.")
+        df_set["reliability_note"] = notes
 
-    print("\n[TOP 10 RR BOWLERS]")
-    print(top10_rr_bw[["rank", "player", "teams", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
+        # Step 6: Z-scores within set across qualifying players
+        q = df_set[df_set["qualifies"]].copy()
+        if len(q) > 0:
+            r_mean, r_std = q["runs_above_expected_per_100"].mean(), q["runs_above_expected_per_100"].std(ddof=0)
+            d_mean, d_std = q["dismissal_penalty"].mean(), q["dismissal_penalty"].std(ddof=0)
+            if r_std == 0: r_std = 1.0
+            if d_std == 0: d_std = 1.0
 
-    # Verification: holding everything else equal:
-    # 1. Batter: higher dismissal penalty MUST lower the raw rating
-    # Mathematically: raw_rating = z(runs) - z(dismissal). Derivative w.r.t dismissal_penalty is -1/std < 0.
-    # 2. Bowler: conceding more runs (lower runs_saved_per_over) MUST lower the raw rating
-    # Mathematically: raw_rating = z(runs_saved) + z(wkt) + 0.5*z(lo). Derivative w.r.t runs conceded is -1/(overs*std) < 0.
-    failures = []
-    # Test batter check
-    test_q_b = batters_all[batters_all["qualifies"]].copy()
-    corr_b = np.corrcoef(test_q_b["z_dismissal"], test_q_b["raw_rating"] - test_q_b["z_runs"])[0, 1]
-    if corr_b > -0.999:
-        failures.append(f"Batter dismissal penalty check failed (corr={corr_b})")
+            q["z_runs"] = (q["runs_above_expected_per_100"] - r_mean) / r_std
+            q["z_dismissal"] = (q["dismissal_penalty"] - d_mean) / d_std
+            q["raw_rating"] = q["z_runs"] - q["z_dismissal"]
+            q["adjusted_rating"] = (q["pressure_balls"] * q["raw_rating"]) / (q["pressure_balls"] + q["shrinkage_k"])
 
-    # Test bowler check
-    test_q_bw = bowlers_all[bowlers_all["qualifies"]].copy()
-    corr_bw = np.corrcoef(test_q_bw["z_runs_saved"], test_q_bw["raw_rating"] - test_q_bw["z_wicket"] - 0.5 * test_q_bw["z_last_over"])[0, 1]
-    if corr_bw < 0.999:
-        failures.append(f"Bowler runs saved check failed (corr={corr_bw})")
+            df_set = df_set.merge(q[["player_id", "z_runs", "z_dismissal", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
+            df_set["raw_rating"] = df_set["raw_rating"].round(4)
+            df_set["adjusted_rating"] = df_set["adjusted_rating"].round(4)
+        else:
+            df_set["raw_rating"] = "n/a"
+            df_set["adjusted_rating"] = "n/a"
 
-    if failures:
+        removed = (df_set["qualifies"] == False).sum()
+        qualified = df_set["qualifies"].sum()
+        print(f"[{set_name} Batters] Total: {len(df_set)} | Qualified: {qualified} | Removed by threshold: {removed}")
+        return df_set
+
+    def process_bowler_set(df_input, set_name, is_set1_rr_only=False):
+        df_set = df_input.copy()
+
+        # Step 3: Tiered thresholds
+        # RR players use 24; non-RR players use 48
+        df_set["threshold_applied"] = np.where(df_set["is_rr"], MIN_BALLS_BOWLER_RR, MIN_BALLS_BOWLER_NON_RR)
+        df_set["shrinkage_k"] = np.where(df_set["is_rr"], SHRINKAGE_K_BOWLER_RR, SHRINKAGE_K_BOWLER_NON_RR)
+        df_set["qualifies"] = df_set["band_balls"] >= df_set["threshold_applied"]
+
+        # Reliability note
+        notes = []
+        for _, row in df_set.iterrows():
+            bb = row["band_balls"]
+            lo = row["last_over_balls"]
+            thresh = row["threshold_applied"]
+            if bb >= thresh * 2:
+                notes.append(f"Robust sample ({bb} band balls, {lo} last-over balls). High statistical confidence.")
+            elif bb >= thresh:
+                notes.append(f"Qualified sample ({bb} >= {thresh} band balls, {lo} last-over balls). Reliable indicator.")
+            else:
+                notes.append(f"Limited sample ({bb} < {thresh} band balls). Excluded from official ranking.")
+        df_set["reliability_note"] = notes
+
+        # Step 6: Z-scores within set across qualifying players
+        q = df_set[df_set["qualifies"]].copy()
+        if len(q) > 0:
+            rs_mean, rs_std = q["runs_saved_per_over"].mean(), q["runs_saved_per_over"].std(ddof=0)
+            w_mean, w_std = q["wicket_component"].mean(), q["wicket_component"].std(ddof=0)
+            if rs_std == 0: rs_std = 1.0
+            if w_std == 0: w_std = 1.0
+
+            q["z_runs_saved"] = (q["runs_saved_per_over"] - rs_mean) / rs_std
+            q["z_wicket"] = (q["wicket_component"] - w_mean) / w_std
+
+            # Last-over component standardized across qualifiers with >= 12 last-over balls
+            q_lo = q[q["lo_qualifies"]]
+            if len(q_lo) > 0 and q_lo["last_over_score"].std(ddof=0) > 0:
+                lo_mean = q_lo["last_over_score"].mean()
+                lo_std = q_lo["last_over_score"].std(ddof=0)
+                q["z_last_over"] = np.where(q["lo_qualifies"], (q["last_over_score"] - lo_mean) / lo_std, 0.0)
+            else:
+                q["z_last_over"] = 0.0
+
+            q["raw_rating"] = q["z_runs_saved"] + q["z_wicket"] + 0.5 * q["z_last_over"]
+            q["adjusted_rating"] = (q["pressure_balls"] * q["raw_rating"]) / (q["pressure_balls"] + q["shrinkage_k"])
+
+            df_set = df_set.merge(q[["player_id", "z_runs_saved", "z_wicket", "z_last_over", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
+            df_set["raw_rating"] = df_set["raw_rating"].round(4)
+            df_set["adjusted_rating"] = df_set["adjusted_rating"].round(4)
+        else:
+            df_set["raw_rating"] = "n/a"
+            df_set["adjusted_rating"] = "n/a"
+
+        removed = (df_set["qualifies"] == False).sum()
+        qualified = df_set["qualifies"].sum()
+        print(f"[{set_name} Bowlers] Total: {len(df_set)} | Qualified: {qualified} | Removed by threshold: {removed}")
+        return df_set
+
+    # Filter pools
+    # Set 1: RR players
+    bat_set1_raw = bat_master_df[bat_master_df["is_rr"]].copy()
+    bw_set1_raw = bw_master_df[bw_master_df["is_rr"]].copy()
+
+    # Set 2: Next season eligible (appeared in 2025 or 2026)
+    bat_set2_raw = bat_master_df[bat_master_df["in_set2"]].copy()
+    bw_set2_raw = bw_master_df[bw_master_df["in_set2"]].copy()
+
+    # Set 3: All players
+    bat_set3_raw = bat_master_df.copy()
+    bw_set3_raw = bw_master_df.copy()
+
+    # Process all sets
+    batters_rr = process_batter_set(bat_set1_raw, "Set 1 (RR Players)", is_set1_rr_only=True)
+    bowlers_rr = process_bowler_set(bw_set1_raw, "Set 1 (RR Players)", is_set1_rr_only=True)
+
+    batters_next_season = process_batter_set(bat_set2_raw, "Set 2 (Next Season Eligible)")
+    bowlers_next_season = process_bowler_set(bw_set2_raw, "Set 2 (Next Season Eligible)")
+
+    batters_all = process_batter_set(bat_set3_raw, "Set 3 (All Players)")
+    bowlers_all = process_bowler_set(bw_set3_raw, "Set 3 (All Players)")
+
+    # Produce Top 10 rankings
+    def get_top10(df_set):
+        t10 = df_set[df_set["qualifies"]].sort_values("adjusted_rating", ascending=False).head(10).copy()
+        t10.insert(0, "rank", range(1, len(t10) + 1))
+        return t10
+
+    top10_rr_b = get_top10(batters_rr)
+    top10_rr_bw = get_top10(bowlers_rr)
+
+    top10_next_b = get_top10(batters_next_season)
+    top10_next_bw = get_top10(bowlers_next_season)
+
+    top10_all_b = get_top10(batters_all)
+    top10_all_bw = get_top10(bowlers_all)
+
+    # =========================================================================
+    # STEP 8: SANITY CHECKS & VERIFICATION
+    # =========================================================================
+    print("\n===================================================================")
+    print("STEP 8: SANITY CHECKS & VERIFICATION")
+    print("===================================================================")
+
+    sanity_failures = []
+
+    # 1. Sign checks for all 3 sets
+    set_tuples = [
+        ("Set 1 (RR)", batters_rr, bowlers_rr, top10_rr_b, top10_rr_bw),
+        ("Set 2 (Next Season)", batters_next_season, bowlers_next_season, top10_next_b, top10_next_bw),
+        ("Set 3 (All Players)", batters_all, bowlers_all, top10_all_b, top10_all_bw),
+    ]
+
+    for s_label, b_df, bw_df, t_b, t_bw in set_tuples:
+        # Batter sign check
+        q_b = b_df[b_df["qualifies"]].copy()
+        corr_b = np.corrcoef(q_b["z_dismissal"], q_b["raw_rating"] - q_b["z_runs"])[0, 1]
+        if corr_b > -0.999:
+            sanity_failures.append(f"{s_label} Batters: dismissal penalty check failed (corr={corr_b})")
+
+        # Bowler sign check
+        q_bw = bw_df[bw_df["qualifies"]].copy()
+        corr_bw = np.corrcoef(q_bw["z_runs_saved"], q_bw["raw_rating"] - q_bw["z_wicket"] - 0.5 * q_bw["z_last_over"])[0, 1]
+        if corr_bw < 0.999:
+            sanity_failures.append(f"{s_label} Bowlers: runs saved check failed (corr={corr_bw})")
+
+        # Threshold check: Confirm that no non-RR player in the top 10 has fewer than 60 pressure balls (batters) or 48 balls in the band (bowlers)
+        for _, row in t_b.iterrows():
+            if not row["is_rr"] and row["pressure_balls"] < MIN_BALLS_BATTER_NON_RR:
+                sanity_failures.append(f"{s_label} Batter Top 10: Non-RR player {row['player']} has {row['pressure_balls']} < {MIN_BALLS_BATTER_NON_RR} balls!")
+
+        for _, row in t_bw.iterrows():
+            if not row["is_rr"] and row["band_balls"] < MIN_BALLS_BOWLER_NON_RR:
+                sanity_failures.append(f"{s_label} Bowler Top 10: Non-RR player {row['player']} has {row['band_balls']} < {MIN_BALLS_BOWLER_NON_RR} band balls!")
+
+    if sanity_failures:
         print("\nSANITY CHECK FAILURES ENCOUNTERED:")
-        for f in failures:
+        for f in sanity_failures:
             print(f"  FAILED: {f}")
         raise ValueError("Sanity check verification failed!")
     else:
-        print("\nSANITY CHECKS PASSED: Verified strictly that dismissals lower batter ratings and runs conceded lower bowler ratings.")
+        print("ALL SANITY CHECKS PASSED:")
+        print("  1. Verified across all three sets that holding other components equal, a batter with more dismissals than expected ranks strictly lower.")
+        print("  2. Verified across all three sets that holding other components equal, a bowler who concedes more runs than expected ranks strictly lower.")
+        print("  3. Confirmed that NO non-RR player in any Top 10 has fewer than 60 pressure balls (batters) or 48 band balls (bowlers).")
 
     # =========================================================================
-    # EXPORT CSV FILES
+    # STEP 7: EXPORT OUTPUTS & PRINT TOP 10 RANKINGS
     # =========================================================================
-    top10_all_b_csv = os.path.join(output_dir, "top10_all_batters.csv")
-    top10_all_bw_csv = os.path.join(output_dir, "top10_all_bowlers.csv")
-    top10_rr_b_csv = os.path.join(output_dir, "top10_rr_batters.csv")
-    top10_rr_bw_csv = os.path.join(output_dir, "top10_rr_bowlers.csv")
+    print("\n===================================================================")
+    print("STEP 7: OUTPUTS & TOP 10 RANKINGS")
+    print("===================================================================")
 
-    batters_all_csv = os.path.join(output_dir, "batters_all.csv")
-    bowlers_all_csv = os.path.join(output_dir, "bowlers_all.csv")
-    batters_rr_csv = os.path.join(output_dir, "batters_rr.csv")
-    bowlers_rr_csv = os.path.join(output_dir, "bowlers_rr.csv")
+    # Save full tables
+    batters_rr.to_csv(os.path.join(output_dir, "batters_rr.csv"), index=False)
+    bowlers_rr.to_csv(os.path.join(output_dir, "bowlers_rr.csv"), index=False)
+    batters_next_season.to_csv(os.path.join(output_dir, "batters_next_season.csv"), index=False)
+    bowlers_next_season.to_csv(os.path.join(output_dir, "bowlers_next_season.csv"), index=False)
+    batters_all.to_csv(os.path.join(output_dir, "batters_all.csv"), index=False)
+    bowlers_all.to_csv(os.path.join(output_dir, "bowlers_all.csv"), index=False)
 
-    top10_all_b.to_csv(top10_all_b_csv, index=False)
-    top10_all_bw.to_csv(top10_all_bw_csv, index=False)
-    top10_rr_b.to_csv(top10_rr_b_csv, index=False)
-    top10_rr_bw.to_csv(top10_rr_bw_csv, index=False)
-
-    batters_all.to_csv(batters_all_csv, index=False)
-    bowlers_all.to_csv(bowlers_all_csv, index=False)
-    batters_rr.to_csv(batters_rr_csv, index=False)
-    bowlers_rr.to_csv(bowlers_rr_csv, index=False)
-
-    # For backward compatibility with existing legacy dashboards:
-    # also save batters_pressure.csv and bowlers_pressure.csv as RR tables
+    # Backward compatibility
     batters_rr.to_csv(os.path.join(output_dir, "batters_pressure.csv"), index=False)
     bowlers_rr.to_csv(os.path.join(output_dir, "bowlers_pressure.csv"), index=False)
 
-    print("\nSaved all 8 target CSVs:")
-    print(f"  1. {top10_all_b_csv}")
-    print(f"  2. {top10_all_bw_csv}")
-    print(f"  3. {top10_rr_b_csv}")
-    print(f"  4. {top10_rr_bw_csv}")
-    print(f"  5. {batters_all_csv}")
-    print(f"  6. {bowlers_all_csv}")
-    print(f"  7. {batters_rr_csv}")
-    print(f"  8. {bowlers_rr_csv}")
+    # Save Top 10 tables
+    top10_rr_b.to_csv(os.path.join(output_dir, "top10_rr_batters.csv"), index=False)
+    top10_rr_bw.to_csv(os.path.join(output_dir, "top10_rr_bowlers.csv"), index=False)
+    top10_next_b.to_csv(os.path.join(output_dir, "top10_next_season_batters.csv"), index=False)
+    top10_next_bw.to_csv(os.path.join(output_dir, "top10_next_season_bowlers.csv"), index=False)
+    top10_all_b.to_csv(os.path.join(output_dir, "top10_all_batters.csv"), index=False)
+    top10_all_bw.to_csv(os.path.join(output_dir, "top10_all_bowlers.csv"), index=False)
+
+    # Print Top 10 Tables
+    print("\n[TOP 10 RR BATTERS (SET 1)]")
+    print(top10_rr_b[["rank", "player", "nationality", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+
+    print("\n[TOP 10 RR BOWLERS (SET 1)]")
+    print(top10_rr_bw[["rank", "player", "nationality", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
+
+    print("\n[TOP 10 NEXT SEASON ELIGIBLE BATTERS (SET 2)]")
+    print(top10_next_b[["rank", "player", "nationality", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+
+    print("\n[TOP 10 NEXT SEASON ELIGIBLE BOWLERS (SET 2)]")
+    print(top10_next_bw[["rank", "player", "nationality", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
+
+    print("\n[TOP 10 ALL BATTERS (SET 3)]")
+    print(top10_all_b[["rank", "player", "nationality", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+
+    print("\n[TOP 10 ALL BOWLERS (SET 3)]")
+    print(top10_all_bw[["rank", "player", "nationality", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
 
     return {
-        "exp_table": exp_table,
-        "top10_all_batters": top10_all_b,
-        "top10_all_bowlers": top10_all_bw,
-        "top10_rr_batters": top10_rr_b,
-        "top10_rr_bowlers": top10_rr_bw,
-        "batters_all": batters_all,
-        "bowlers_all": bowlers_all,
-        "batters_rr": batters_rr,
-        "bowlers_rr": bowlers_rr,
+        "top10_rr_b": top10_rr_b,
+        "top10_rr_bw": top10_rr_bw,
+        "top10_next_b": top10_next_b,
+        "top10_next_bw": top10_next_bw,
+        "top10_all_b": top10_all_b,
+        "top10_all_bw": top10_all_bw
     }
 
 if __name__ == "__main__":
