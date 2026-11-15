@@ -1,11 +1,121 @@
-rank,player_id,player,nationality,teams,is_rr,in_set2,pressure_balls,band_balls,last_over_balls,band_actual_runs,band_expected_runs,band_actual_wickets,band_expected_wickets,runs_saved_per_over,wicket_component,dot_difference,last_over_actual_runs,last_over_expected_runs,last_over_actual_wickets,last_over_expected_wickets,last_over_runs_saved,last_over_wicket_component,last_over_score,lo_qualifies,threshold_applied,shrinkage_k,qualifies,reliability_note,z_runs_saved,z_wicket,z_last_over,raw_rating,adjusted_rating
-1,8177,Akash Madhwal,India,"Chennai Super Kings, Mumbai Indians, Rajasthan Royals",True,True,104,34,70,34,45.4,6,1.68,2.01,20.23,19.1,114,129.3,6,7.4,1.32,-2.11,-0.79,True,24,24.0,True,"Qualified sample (34 >= 24 band balls, 70 last-over balls). Reliable indicator.",1.8241579922464675,5.652022086511673,-0.21563837742077838,7.3684,5.9868
-2,2985,Mark Wood,England,"England, Lucknow Super Giants",False,True,123,88,35,97,119.3,7,3.95,1.52,6.18,5.5,48,53.1,8,4.27,0.87,7.04,7.91,True,48,48.0,True,"Qualified sample (88 >= 48 band balls, 35 last-over balls). Reliable indicator.",1.4078150999669066,1.7176345517880482,1.087653168745754,3.6693,2.6393
-3,5837,Mahedi Hasan,Bangladesh,Bangladesh,False,True,150,144,6,136,179.1,12,6.12,1.8,6.43,10.4,9,9.5,0,0.52,0.45,-9.45,-9.0,False,48,48.0,True,"Robust sample (144 band balls, 6 last-over balls). High statistical confidence.",1.6457253241266556,1.7876414474237,0.0,3.4334,2.601
-4,2490,Mohammad Nawaz,Pakistan,Pakistan,False,False,250,246,4,287,319.3,20,10.75,0.79,7.5,0.6,7,7.5,1,0.36,0.68,19.97,20.64,False,48,48.0,True,"Robust sample (246 band balls, 4 last-over balls). High statistical confidence.",0.7875491584075602,2.087270960744289,0.0,2.8748,2.4118
-5,4101,Mitchell Santner,New Zealand,"Chennai Super Kings, Mumbai Indians, New Zealand",False,True,402,394,8,423,537.7,26,18.71,1.75,3.53,4.3,21,13.9,1,0.42,-5.31,11.56,6.25,False,48,48.0,True,"Robust sample (394 band balls, 8 last-over balls). High statistical confidence.",1.6032413555267007,0.9755614580501406,0.0,2.5788,2.3037
-6,22920,Jacob Duffy,New Zealand,"New Zealand, Royal Challengers Bengaluru",False,True,290,208,82,252,284.5,17,9.45,0.94,6.74,10.3,120,129.1,6,9.53,0.66,-3.11,-2.45,True,48,48.0,True,"Robust sample (208 band balls, 82 last-over balls). High statistical confidence.",0.9150010642074259,1.874449998011908,-0.4643123965743926,2.5573,2.1941
-7,8380,Mohammad Rishad Hossain,Bangladesh,Bangladesh,False,True,182,167,15,190,203.0,9,8.7,0.47,1.51,2.8,22,24.4,5,1.66,0.94,21.93,22.87,True,48,48.0,True,"Robust sample (167 band balls, 15 last-over balls). High statistical confidence.",0.5156517593678468,0.40990574131407514,3.3287154136482053,2.5899,2.0494
-8,5034,Murugan Ashwin,India,"Mumbai Indians, Rajasthan Royals",True,False,83,83,0,93,110.4,6,3.85,1.26,4.7,7.4,0,0.0,0,0.0,0.0,0.0,0.0,False,24,24.0,True,"Robust sample (83 band balls, 0 last-over balls). High statistical confidence.",1.186898463247139,1.3031937296249905,0.0,2.4901,1.9316
-9,3629,Corbin Bosch,South Africa,"Mumbai Indians, Rajasthan Royals, South Africa",False,True,118,72,46,90,95.1,7,3.39,0.42,8.34,10.5,77,79.0,5,4.92,0.26,-2.19,-1.93,True,48,48.0,True,"Qualified sample (72 >= 48 band balls, 46 last-over balls). Reliable indicator.",0.47316779076789156,2.3224941300800785,-0.3864145110563929,2.6025,1.8499
-10,7920,Nathan Ellis,Australia,"Australia, Chennai Super Kings, Punjab Kings",False,True,314,172,142,202,240.5,11,8.65,1.34,2.28,0.9,204,251.8,17,15.62,2.02,1.03,3.04,True,48,48.0,True,"Robust sample (172 band balls, 142 last-over balls). High statistical confidence.",1.2548728130070677,0.6255269798718823,0.3581095101444882,2.0595,1.7864
+rank,player_id,player,nationality,tier,teams,is_rr,in_set2,pressure_balls,band_balls,last_over_balls,band_actual_runs,band_expected_runs,band_actual_wickets,band_expected_wickets,runs_saved_per_over,wicket_component,dot_difference,last_over_actual_runs,last_over_expected_runs,last_over_actual_wickets,last_over_expected_wickets,last_over_runs_saved,last_over_wicket_component,last_over_score,lo_qualifies,threshold_applied,shrinkage_k,qualifies,eligibility,reliability_note,z_runs_saved,z_wicket,z_last_over,raw_rating,adjusted_rating
+1,8177,Akash Madhwal,India,Senior,"Chennai Super Kings, Mumbai Indians, Rajasthan Royals",True,True,104,34,70,34,45.4,6,1.68,2.01,20.23,19.1,114,129.3,6,7.4,1.32,-2.11,-0.79,True,24,24.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Qualified sample (34 >= 24 band balls, 70 last-over balls). Reliable indicator.",1.8241579922464675,5.652022086511673,-0.21563837742077838,7.3684,5.9868
+2,2985,Mark Wood,England,Senior,"England, Lucknow Super Giants",False,True,123,88,35,97,119.3,7,3.95,1.52,6.18,5.5,48,53.1,8,4.27,0.87,7.04,7.91,True,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Qualified sample (88 >= 48 band balls, 35 last-over balls). Reliable indicator.",1.4078150999669066,1.7176345517880482,1.087653168745754,3.6693,2.6393
+3,5837,Mahedi Hasan,Bangladesh,Senior,Bangladesh,False,True,150,144,6,136,179.1,12,6.12,1.8,6.43,10.4,9,9.5,0,0.52,0.45,-9.45,-9.0,False,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (144 band balls, 6 last-over balls). High statistical confidence.",1.6457253241266556,1.7876414474237,0.0,3.4334,2.601
+4,2490,Mohammad Nawaz,Pakistan,Senior,Pakistan,False,False,250,246,4,287,319.3,20,10.75,0.79,7.5,0.6,7,7.5,1,0.36,0.68,19.97,20.64,False,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (246 band balls, 4 last-over balls). High statistical confidence.",0.7875491584075602,2.087270960744289,0.0,2.8748,2.4118
+5,4101,Mitchell Santner,New Zealand,Senior,"Chennai Super Kings, Mumbai Indians, New Zealand",False,True,402,394,8,423,537.7,26,18.71,1.75,3.53,4.3,21,13.9,1,0.42,-5.31,11.56,6.25,False,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (394 band balls, 8 last-over balls). High statistical confidence.",1.6032413555267007,0.9755614580501406,0.0,2.5788,2.3037
+6,22920,Jacob Duffy,New Zealand,Senior,"New Zealand, Royal Challengers Bengaluru",False,True,290,208,82,252,284.5,17,9.45,0.94,6.74,10.3,120,129.1,6,9.53,0.66,-3.11,-2.45,True,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (208 band balls, 82 last-over balls). High statistical confidence.",0.9150010642074259,1.874449998011908,-0.4643123965743926,2.5573,2.1941
+7,8380,Mohammad Rishad Hossain,Bangladesh,Senior,Bangladesh,False,True,182,167,15,190,203.0,9,8.7,0.47,1.51,2.8,22,24.4,5,1.66,0.94,21.93,22.87,True,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (167 band balls, 15 last-over balls). High statistical confidence.",0.5156517593678468,0.40990574131407514,3.3287154136482053,2.5899,2.0494
+8,5034,Murugan Ashwin,India,Senior,"Mumbai Indians, Rajasthan Royals",True,False,83,83,0,93,110.4,6,3.85,1.26,4.7,7.4,0,0.0,0,0.0,0.0,0.0,0.0,False,24,24.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (83 band balls, 0 last-over balls). High statistical confidence.",1.186898463247139,1.3031937296249905,0.0,2.4901,1.9316
+9,3629,Corbin Bosch,South Africa,Senior,"Mumbai Indians, Rajasthan Royals, South Africa",False,True,118,72,46,90,95.1,7,3.39,0.42,8.34,10.5,77,79.0,5,4.92,0.26,-2.19,-1.93,True,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Qualified sample (72 >= 48 band balls, 46 last-over balls). Reliable indicator.",0.47316779076789156,2.3224941300800785,-0.3864145110563929,2.6025,1.8499
+10,7920,Nathan Ellis,Australia,Senior,"Australia, Chennai Super Kings, Punjab Kings",False,True,314,172,142,202,240.5,11,8.65,1.34,2.28,0.9,204,251.8,17,15.62,2.02,1.03,3.04,True,48,48.0,True,"Eligible (>=0      48
+1      48
+2      48
+3      48
+4      24
+       ..
+467    48
+468    48
+469    24
+470    48
+471    48
+Name: threshold_applied, Length: 472, dtype: int64 band balls)","Robust sample (172 band balls, 142 last-over balls). High statistical confidence.",1.2548728130070677,0.6255269798718823,0.3581095101444882,2.0595,1.7864

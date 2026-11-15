@@ -1,11 +1,16 @@
-# SupeRR Selector: Rajasthan Royals Pressure Analysis & Multi-Set Ranking Engine
+# SupeRR Selector: Rajasthan Royals Pressure Analysis & Multi-Tier Analytics Framework
 
-A decision science and talent scouting system engineered for the **Rajasthan Royals - SupeRR Selector (Season 2)** hackathon. This system quantifies player performance under acute match pressure using game-state expected-value baselines constructed from all qualifying IPL and T20 International matches (2022 onward).
+A decision science, pressure analytics, and talent scouting engine engineered for the **Rajasthan Royals - SupeRR Selector (Season 2)** hackathon. This system quantifies player performance under acute match pressure using game-state expected-value baselines constructed from qualifying IPL, T20 International, Development, and Youth fixtures (2022 onward).
 
-The repository features three independent, internally consistent ranking sets with tiered eligibility thresholds:
-* **Set 1 (RR Players):** Franchise-specific ranking of players who appeared for Rajasthan Royals (`team_id == 3`).
-* **Set 2 (Next Season Eligible):** Strategic proxy ranking of players who appeared in the most recent two seasons (`2025` and `2026`), including active RR players, with **all Pakistan players dropped** due to IPL regulatory constraints. *(Note: This serves as an objective talent availability proxy, not official squad registration).*
-* **Set 3 (All Players):** Global ranking across all players in the qualifying dataset regardless of franchise or nationality, with Pakistan players fully included in the analytical pool.
+The framework strictly partitions matches into three tiers to eliminate quality cross-contamination:
+* **SENIOR:** Full national teams (with official ICC Top-12 opponent filter) and Indian Premier League (IPL) franchise matches.
+  * **Set 1 (RR Players):** Franchise-specific ranking of players who appeared for Rajasthan Royals (`team_id == 3`).
+  * **Set 2 (Next Season Eligible):** Strategic proxy ranking of players who appeared in the most recent two seasons (`2025` and `2026`), with **all Pakistan players excluded** per IPL auction eligibility constraints.
+  * **Set 3 (All Senior Players):** Global ranking across all senior players in qualifying matches, with Pakistan players fully included.
+* **DEVELOPMENT:** A-teams and emerging competitions (e.g., *Mens T20 Emerging Teams Asia Cup 2024*, Comp 2670).
+  * **Development Players Sub-List:** Ranked exclusively on Development tier deliveries.
+* **YOUTH:** Under-age and youth tournament fixtures (e.g., *Asia Cup Rising Stars 2025*, Comp 3289).
+  * **Young Players Sub-List:** Ranked exclusively on Youth tier deliveries.
 
 ---
 
@@ -15,27 +20,36 @@ The repository features three independent, internally consistent ranking sets wi
 RR_player_analysis/
 │
 ├── frontend/
-│   └── index.html                 # Standalone interactive dashboard (3-way pool toggle, responsive cards, RR palette)
+│   └── index.html                 # Standalone interactive dashboard (4-way pool toggle, sub-toggle, RR palette)
 │
 ├── backend/
 │   ├── exploratory_analysis.py    # Player roster reconciliation & season exploratory analysis
 │   ├── win_probability_model.py   # Second-innings logistic regression model & swing thresholding
-│   └── pressure_metrics.py        # Complete pressure engine, Top-12 ICC filter, Bayesian shrinkage & rating pipeline
+│   └── pressure_metrics.py        # Complete multi-tier engine, TEAM_TIER mapping, ICC filter & shrinkage rating pipeline
 │
 ├── data/
-│   ├── expected_tables.csv        # 408 empirical game-state expected value buckets
+│   ├── expected_tables.csv        # 408 empirical game-state expected value buckets (Senior pool)
+│   ├── expected_tables_development.csv # 217 empirical game-state buckets (Development & Youth pool)
 │   ├── top10_rr_batters.csv       # Top 10 Batters (Set 1: RR Only)
 │   ├── top10_rr_bowlers.csv       # Top 10 Bowlers (Set 1: RR Only)
 │   ├── top10_next_season_batters.csv # Top 10 Batters (Set 2: Next Season Eligible)
 │   ├── top10_next_season_bowlers.csv # Top 10 Bowlers (Set 2: Next Season Eligible)
-│   ├── top10_all_batters.csv      # Top 10 Batters (Set 3: All Players - Global)
-│   ├── top10_all_bowlers.csv      # Top 10 Bowlers (Set 3: All Players - Global)
+│   ├── top10_all_batters.csv      # Top 10 Batters (Set 3: All Senior Players - Global)
+│   ├── top10_all_bowlers.csv      # Top 10 Bowlers (Set 3: All Senior Players - Global)
+│   ├── top10_young_batters.csv    # Top 10 Young Batters (Youth Comp 3289)
+│   ├── top10_young_bowlers.csv    # Top Young Bowlers (Youth Comp 3289)
+│   ├── top10_development_batters.csv # Top 10 Development Batters (Emerging Comp 2670)
+│   ├── top10_development_bowlers.csv # Top Development Bowlers (Emerging Comp 2670)
 │   ├── batters_rr.csv             # Full per-player metrics for RR batters
 │   ├── bowlers_rr.csv             # Full per-player metrics for RR bowlers
 │   ├── batters_next_season.csv    # Full per-player metrics for Next Season batters
 │   ├── bowlers_next_season.csv    # Full per-player metrics for Next Season bowlers
-│   ├── batters_all.csv            # Full per-player metrics for all global batters
-│   ├── bowlers_all.csv            # Full per-player metrics for all global bowlers
+│   ├── batters_all.csv            # Full per-player metrics for all global senior batters
+│   ├── bowlers_all.csv            # Full per-player metrics for all global senior bowlers
+│   ├── batters_young.csv          # Full per-player metrics for Young batters (Youth)
+│   ├── bowlers_young.csv          # Full per-player metrics for Young bowlers (Youth)
+│   ├── batters_development.csv    # Full per-player metrics for Development batters (A-Teams)
+│   ├── bowlers_development.csv    # Full per-player metrics for Development bowlers (A-Teams)
 │   ├── batters_pressure.csv       # Backward-compatible RR batters table
 │   ├── bowlers_pressure.csv       # Backward-compatible RR bowlers table
 │   └── win_prob_curves.png        # In-play win probability validation curves
@@ -47,120 +61,165 @@ RR_player_analysis/
 
 ---
 
-## 1. Top 12 ICC T20I Opponent Filter & Match Baseline (Steps 2 & 3)
+## 1. Team Tier Classification & Match Separation (Steps 2 & 3)
 
-### Current Top 12 ICC T20I Teams Constant
-At the top of `backend/pressure_metrics.py`, the constant `TOP_12_ICC_T20I` defines the 12 teams of the official ICC Men's T20I Team Rankings:
+### `TEAM_TIER` Mapping Constant
+At the top of `backend/pressure_metrics.py`, every team appearing across the dataset is deterministically mapped to one of three tiers without guessing:
+* **`SENIOR`:** Full national cricket teams (23 teams) and IPL franchises (10 franchises).
+* **`DEVELOPMENT`:** "A", "B", "C", "D", U23, Emerging, Academy, and XI sides (e.g., `India A`, `Pakistan A`, `Sri Lanka A`, `Afghanistan A`, `Bangladesh A`).
+* **`YOUTH`:** Teams labeled U16, U17, U19, U21, or participating in designated youth tournaments.
 
 ```python
-# Official ICC Men's T20I Team Rankings snapshot recorded on 2026-11-14:
-# 1. India, 2. Australia, 3. England, 4. South Africa, 5. New Zealand,
-# 6. West Indies, 7. Pakistan, 8. Sri Lanka, 9. Bangladesh, 10. Afghanistan,
-# 11. Ireland, 12. Zimbabwe
-# Note: Used strictly as an opponent filter to decide which T20I matches count.
-TOP_12_ICC_T20I = [
-    "India",
-    "England",
-    "Australia",
-    "South Africa",
-    "New Zealand",
-    "West Indies",
-    "Pakistan",
-    "Sri Lanka",
-    "Bangladesh",
-    "Afghanistan",
-    "Ireland",
-    "Zimbabwe"
-]
+TEAM_TIER = {
+    # IPL Franchises (SENIOR)
+    "Chennai Super Kings": "SENIOR",
+    "Delhi Capitals": "SENIOR",
+    "Gujarat Titans": "SENIOR",
+    "Kolkata Knight Riders": "SENIOR",
+    "Lucknow Super Giants": "SENIOR",
+    "Mumbai Indians": "SENIOR",
+    "Punjab Kings": "SENIOR",
+    "Rajasthan Royals": "SENIOR",
+    "Royal Challengers Bengaluru": "SENIOR",
+    "Sunrisers Hyderabad": "SENIOR",
+
+    # Full National Teams (SENIOR)
+    "Afghanistan": "SENIOR", "Australia": "SENIOR", "Bangladesh": "SENIOR",
+    "Canada": "SENIOR", "England": "SENIOR", "Hong Kong": "SENIOR",
+    "India": "SENIOR", "Ireland": "SENIOR", "Japan": "SENIOR",
+    "Kuwait": "SENIOR", "Nepal": "SENIOR", "Netherlands": "SENIOR",
+    "New Zealand": "SENIOR", "Oman": "SENIOR", "Pakistan": "SENIOR",
+    "Scotland": "SENIOR", "Singapore": "SENIOR", "South Africa": "SENIOR",
+    "Sri Lanka": "SENIOR", "United Arab Emirates": "SENIOR",
+    "United States Of America": "SENIOR", "West Indies": "SENIOR",
+    "Zimbabwe": "SENIOR",
+
+    # Development / "A" Sides (DEVELOPMENT)
+    "Afghanistan A": "DEVELOPMENT", "Bangladesh A": "DEVELOPMENT",
+    "India A": "DEVELOPMENT", "Pakistan A": "DEVELOPMENT",
+    "Sri Lanka A": "DEVELOPMENT",
+    "India B": "DEVELOPMENT", "India C": "DEVELOPMENT",
+    "India D": "DEVELOPMENT", "India U23": "DEVELOPMENT",
+
+    # Youth Sides (YOUTH)
+    "India U21": "YOUTH", "India U19": "YOUTH",
+    "India U17": "YOUTH", "India U16": "YOUTH"
+}
 ```
 
-### Filtering Methodology & Match / Ball Counts
-1. **IPL Matches (Unfiltered):** IPL matches are franchise competitions with no national-team opponent. All 360 resolved IPL matches (**86,713 deliveries**) are preserved unfiltered.
-2. **T20I Matches (Top 12 Opponent Filter):** For T20I international matches, a delivery is kept only if the opponent is in `TOP_12_ICC_T20I`. Any T20I match where the opponent is not a top-12 team is dropped. Matches where both teams belong to the Top 12 total 397 resolved matches (**92,623 deliveries**).
-3. **Dropped Matches:** 51 resolved T20I matches (**11,711 deliveries**) against non-Top 12 opponents (e.g. Nepal, UAE, Hong Kong, Oman) and 30 emerging/regional tournament matches (**6,985 deliveries**) are dropped.
-4. **Unweighted:** Every delivery passing the filter carries an unweighted multiplier of **1.0** (replacing previous tiered weighting proposals).
+### Complete Breakdown of Matches and Deliveries by Tier
 
-| Match Category | Raw Matches | Resolved (Valid) Matches | Kept / Dropped Deliveries | Filter Rule Applied |
-| :--- | :---: | :---: | :---: | :--- |
-| **IPL Matches** | 371 | **360** | **86,713 kept** | Unfiltered franchise baseline |
-| **T20I (Both Top 12)** | 428 | **397** | **92,623 kept** | Opponent confirmed in Top 12 |
-| **T20I (Non-Top 12 Opponent)** | 54 | **51** | **11,711 dropped** | Dropped: opponent outside Top 12 |
-| **Regional / Emerging T20** | 30 | **30** | **6,985 dropped** | Dropped: non-qualifying format |
-| **TOTAL QUALIFYING BASELINE** | 883 | **757** | **179,336 balls** | **Unified Expected-Value Pool** |
-
-### Methodological Limitations & Pakistan Opposition Status
-* **Snapshot Limitation:** Applying the top 12 snapshot as of `2026-11-14` enforces a fixed quality threshold across historical matches from 2022 to 2026. While team rankings fluctuated over these 5 years, this snapshot provides an objective, reproducible cutoff that excludes associate and lower-tier fixtures without introducing arbitrary time-varying heuristics.
-* **Pakistan Opposition vs. Player Eligibility:** Pakistan is ranked #7 in the ICC T20I rankings, so all T20I matches involving Pakistan against Top-12 opposition remain in the qualifying baseline. However, while Pakistan matches provide legitimate competitive opposition, individual Pakistan players are barred from participating in the IPL. Consequently, Pakistan players are excluded exclusively from **Set 2 (Next Season Eligible)**, but remain fully ranked in **Set 3 (Global All Players)**.
+| Match Tier | Competitions Included | Raw Matches | Resolved Matches | Raw Deliveries | Valid Deliveries | Policy Applied |
+| :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **SENIOR** | IPL (2022–2026), T20I (2022–2026) | **853** | **757** | **194,014** | **179,336** | Top 12 T20I opponent filter applied to international matches (51 T20I dropped). IPL unfiltered. |
+| **DEVELOPMENT** | *Mens T20 Emerging Teams Asia Cup 2024* (Comp 2670) | **15** | **15** | **3,519** | **3,519** | Kept in full; opponent filter not applied (distinct competition tier). |
+| **YOUTH** | *Asia Cup Rising Stars 2025* (Comp 3289) | **15** | **15** | **3,466** | **3,466** | Kept in full; opponent filter not applied (distinct youth tier). |
+| **TOTAL DATASET** | All 8 tournament series | **883** | **787** | **200,999** | **186,321** | **Strict tier separation (Zero cross-tier leakage)** |
 
 ---
 
-## 2. Data Audit & Confirmation (Step 1)
+## 2. Separate Expected-Value Baselines (Step 4)
 
-* **Team Confirmation:** Rajasthan Royals is confirmed dynamically from `teams.csv` and `matches.csv` as **`team_id == 3`** (`"Rajasthan Royals"`).
-* **Season Confirmation:** The data spans 8 tournament seasons (`2022`, `2022/23`, `2023`, `2023/24`, `2024`, `2024/25`, `2025`, `2026`). The most recent season is confirmed as **`2026`**, preceded by **`2025`**.
-* **Nationality Mapping:** Mapped across all 1,217 players in `competition_team_player_mapping.csv`, correctly identifying domestic Indian players and overseas professionals.
+### Senior Baseline (`data/expected_tables.csv`)
+* **Size:** 408 empirical game-state buckets constructed from **179,336 deliveries** (757 senior matches).
+* **Usage:** Exclusively used to evaluate Senior ranking sets (Set 1 RR, Set 2 Next Season Eligible, Set 3 All Senior Players).
+* **Opponent Standard:** All international matches strictly against official ICC Top-12 opponents.
 
----
-
-## 3. Three Ranking Sets & Tiered Thresholds (Steps 3 & 7)
-
-### Definitions of the Sets
-1. **Set 1 (RR Players):** Every player who appeared for Rajasthan Royals (`team_id == 3`) in the qualifying dataset.
-2. **Set 2 (Next Season Eligible):** Every player who appeared in the most recent two seasons (`2025` and `2026`) in the qualifying data, **with all Pakistan players removed**. *(Serves as a realistic talent availability proxy for IPL auction planning).*
-3. **Set 3 (All Players):** Every player in the qualifying dataset across all teams and nationalities, **including Pakistan players**.
-
-### Tiered Minimum Sample Thresholds
-* **RR Players (Set 1, and RR players in Sets 2 & 3):**
-  * Batters: $\ge \mathbf{30}$ pressure deliveries faced.
-  * Bowlers: $\ge \mathbf{24}$ deliveries in the RRR 8–12 chase band.
-  * Bayesian Shrinkage: $k = 30$ (batters), $k = 24$ (bowlers).
-* **Non-RR Players (Outside RR in Sets 2 & 3):**
-  * Batters: raised to $\ge \mathbf{60}$ pressure deliveries faced.
-  * Bowlers: raised to $\ge \mathbf{48}$ deliveries in the RRR 8–12 chase band.
-  * Bayesian Shrinkage: $k = 60$ (batters), $k = 48$ (bowlers).
-
-### Threshold Removal & Eligibility Audit
-| Ranking Set | Player Pool | Role | Evaluated Players | Qualified Players | Removed by Threshold |
-| :--- | :---: | :--- | :---: | :---: | :---: |
-| **Set 1: RR Players** | **69** | Batters | 57 | **33** | 24 |
-| | | Bowlers | 45 | **34** | 11 |
-| **Set 2: Next Season Eligible (ex-Pak)** | **454** | Batters | 373 | **184** | 189 |
-| | | Bowlers | 284 | **126** | 158 |
-| **Set 3: All Players (Global with Pak)** | **705** | Batters | 545 | **220** | 325 |
-| | | Bowlers | 398 | **150** | 248 |
+### Lower-Tier Baseline (`data/expected_tables_development.csv`)
+* **Size:** 217 empirical game-state buckets constructed across all **6,985 deliveries** in the 30 lower-tier matches (15 Development + 15 Youth matches).
+* **Sample Reliability Threshold:** Due to smaller aggregate volume, buckets with $< 50$ balls are marked as `Unreliable (<50 balls)` (196 buckets), while buckets with $\ge 50$ balls are marked as `Reliable (>=50 balls)` (21 buckets).
+* **Strict Non-Comparability Notice:** Lower-tier ratings are computed against this separate 217-bucket baseline and standardized internally within their respective sub-list. They are **not directly comparable** to Senior ratings due to substantial differences in competition quality, game dynamics, and baseline expectations.
 
 ---
 
-## 4. Expected-Value Baselines & Pressure Definitions (Steps 4 & 5)
+## 3. Multi-Tier Player Tracking & Atharva Taide Case Study
 
-A single unified expected-value baseline was constructed across all **179,336 qualifying deliveries** in 757 qualifying matches:
-* **Second Innings (Chase):** Partitioned by `balls_remaining` (1–6, 7–12, 13–24, 25–36, 37–60, 61–120), `required_run_rate` in 0.5 intervals (<6.0, 6.0–6.5, ..., 16.0+), and `wickets_in_hand` (1–3, 4–6, 7–10).
-* **First Innings:** Partitioned by match phase / balls remaining and `venue_par` tertiles (`Low <165`, `Medium 165–185`, `High >185`).
-* Saved to [expected_tables.csv](file:///D:/RR_player_analysis/data/expected_tables.csv) (408 distinct empirical states).
+A total of **149 players** appeared in more than one competition tier. To maintain mathematical integrity:
+1. **Zero Ball Contamination:** Deliveries faced or bowled in Development/Youth fixtures are completely excluded from senior sets (Sets 1, 2, and 3).
+2. **Independent Tier Entries:** When a player appears in multiple tiers, they are evaluated separately in each tier using only the deliveries from that specific tier.
 
-### Pressure Definitions
-* **Batting Pressure:** Second-innings deliveries with required run rate $\ge 9.0$ OR death overs (overs 16–20 / balls remaining $\le 30$) in either innings.
-* **Bowling Pressure:** Core chase band (RRR 8.0–12.0 with balls remaining $> 6$) and last-over component (overs 20 / balls remaining 1–6 across both innings). Balls in both count once exclusively under the last-over component.
+### Multi-Tier Player Highlights
+| Player | Tiers Appeared | Senior Matches | Development Matches | Youth Matches | Total Matches |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Namboori Tilak Varma** | Senior, Development | 138 | 4 | 0 | 142 |
+| **Abhishek Sharma** | Senior, Development | 134 | 4 | 0 | 138 |
+| **Jitesh Sharma** | Senior, Youth | 107 | 0 | 4 | 111 |
+| **Nehal Wadhera** | Senior, Development, Youth | 60 | 4 | 4 | 68 |
+| **Ramandeep Singh** | Senior, Development, Youth | 56 | 4 | 4 | 64 |
+| **Vaibhav Sooryavanshi** | Senior, Youth | 54 | 0 | 4 | 58 |
+| **Sediqullah Atal** | Senior, Development | 31 | 5 | 0 | 36 |
 
----
-
-## 5. Rating Formulas & Mathematical Principles (Step 6)
-
-* **Batters:**
-  $$\text{Raw Rating} = z(\text{runs\_above\_expected\_per\_100}) - z(\text{dismissal\_penalty})$$
-  $$\text{Adjusted Rating} = \frac{\text{pressure\_balls} \cdot \text{Raw Rating}}{\text{pressure\_balls} + k} \quad (k=30 \text{ for RR}, k=60 \text{ for others})$$
-  *(Excess dismissals impose a penalty equal to expected runs per innings in that state).*
-
-* **Bowlers:**
-  $$\text{Raw Rating} = z(\text{runs\_saved\_per\_over}) + z(\text{wicket\_component}) + 0.5 \cdot z(\text{last\_over\_component})$$
-  $$\text{Adjusted Rating} = \frac{\text{pressure\_balls} \cdot \text{Raw Rating}}{\text{pressure\_balls} + k} \quad (k=24 \text{ for RR}, k=48 \text{ for others})$$
-  *(Conceding runs reduces runs saved and strictly lowers rating; wickets gained above expected are weighted by bucket runs per wicket).*
-
-* **Internal Standardization:** Z-scores are computed independently within each ranking set using that set's qualifying mean and standard deviation.
+### Atharwa Taide Analytical Profile
+In Senior cricket (Sets 2 & 3), Atharwa Taide ranks #1 because across 111 pressure deliveries in 4 innings, he suffered only 3 dismissals against 6.27 expected (excess dismissals: $-3.27$, yielding a massive negative dismissal penalty of $-34.54$). In Development matches, his volume did not cross the qualification cutoff, so he is classified as `Ineligible (<30 balls)` in the lower-tier tables. This highlights the scout utility of tiered evaluation: distinguishing high-pressure senior franchise execution from developmental tournament exposure.
 
 ---
 
-## 6. Official Top 10 Rankings
+## 4. Young & Development Rankings (Step 4, 5, 6)
+
+### Eligibility Thresholds for Young & Development Sub-Lists
+* **Batters:** Min **30** pressure balls in that tier ($k = 30.0$).
+* **Bowlers:** Min **24** band balls (RRR 8.0–12.0) in that tier ($k = 24.0$).
+* Players with fewer balls are retained in the full per-player rosters (`batters_young.csv`, `bowlers_young.csv`, `batters_development.csv`, `bowlers_development.csv`) with clear `Ineligible` badges and sample notes.
+
+---
+
+### Young Players Sub-List (Comp 3289: Asia Cup Rising Stars 2025)
+
+#### Top 10 Young Batters (Youth Matches Only)
+| Rank | Player | Team | Adjusted Rating | Runs Above /100b | Dismissal Penalty | Pressure Balls | Sample Status |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **1** | **Sohaib Khan** | United Arab Emirates | **2.1852** | +39.02 | -111.94 | 43 | Qualified (43 >= 30 balls across 2 inns) |
+| **2** | **Jitesh Sharma** | India A | **0.9785** | +59.37 | -25.11 | 49 | Qualified (49 >= 30 balls across 4 inns) |
+| **3** | **SM Meherob Hasan** | Bangladesh A | **0.4186** | +33.34 | -20.15 | 38 | Qualified (38 >= 30 balls across 4 inns) |
+| **4** | **Milan Rathnayake** | Sri Lanka A | **0.4017** | +54.30 | -0.40 | 42 | Qualified (42 >= 30 balls across 3 inns) |
+| **5** | **Haider Shah** | United Arab Emirates | **-0.0045** | +28.14 | +0.17 | 31 | Qualified (31 >= 30 balls across 2 inns) |
+| **6** | **Aryan Bisht** | Oman | **-0.3488** | +2.10 | +0.56 | 30 | Qualified (30 >= 30 balls across 2 inns) |
+| **7** | **Muhammad Arfan** | United Arab Emirates | **-0.6883** | -41.18 | -16.63 | 34 | Qualified (34 >= 30 balls across 3 inns) |
+| **8** | **Wasim Ali** | Oman | **-0.7720** | -31.10 | -0.79 | 31 | Qualified (31 >= 30 balls across 3 inns) |
+| **9** | **Nehal Wadhera** | India A | **-0.8916** | -29.01 | -0.92 | 47 | Qualified (47 >= 30 balls across 4 inns) |
+| **10** | **Qais Ahmad** | Afghanistan A | **-0.9388** | -43.64 | -4.10 | 35 | Qualified (35 >= 30 balls across 3 inns) |
+
+#### Young Bowlers (Youth Matches Only - All Qualified)
+*Note: Across the 15 Youth matches, exactly 2 bowlers met the 24 band balls qualification threshold. All 70 participating bowlers are preserved in `bowlers_young.csv`.*
+| Rank | Player | Team | Adjusted Rating | Runs Saved /Over | Wicket Comp | Last-Over Score | Pressure Balls | Sample Status |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **1** | **Garuka Sanketh** | Sri Lanka A | **1.3684** | -0.24 | -0.29 | -5.87 | 52 | Qualified (29 band balls, 23 last-over balls) |
+| **2** | **SM Meherob Hasan** | Bangladesh A | **-1.0204** | -1.70 | -5.61 | +0.00 | 25 | Qualified (25 band balls, 0 last-over balls) |
+
+---
+
+### Development Players Sub-List (Comp 2670: Mens T20 Emerging Teams Asia Cup 2024)
+
+#### Top 10 Development Batters (Development Matches Only)
+| Rank | Player | Team | Adjusted Rating | Runs Above /100b | Dismissal Penalty | Pressure Balls | Sample Status |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :--- |
+| **1** | **Sediqullah Atal** | Afghanistan A | **1.0472** | +42.28 | -9.94 | 65 | Robust sample (65 balls across 5 inns) |
+| **2** | **Arafat Minhas** | Pakistan A | **0.9849** | +17.45 | -28.70 | 47 | Qualified (47 >= 30 balls across 4 inns) |
+| **3** | **Ramandeep Singh** | India A | **0.8386** | +40.03 | -8.66 | 48 | Qualified (48 >= 30 balls across 4 inns) |
+| **4** | **Jatinder Singh** | Oman | **0.6561** | -38.05 | -61.99 | 31 | Qualified (31 >= 30 balls across 2 inns) |
+| **5** | **Sahan Arachchige** | Sri Lanka A | **0.4646** | +24.87 | -8.45 | 53 | Qualified (53 >= 30 balls across 4 inns) |
+| **6** | **Babar Hayat** | Hong Kong | **0.2202** | +17.94 | -6.42 | 64 | Robust sample (64 balls across 3 inns) |
+| **7** | **Namboori Tilak Varma** | India A | **-0.1472** | +9.44 | -1.85 | 30 | Qualified (30 >= 30 balls across 4 inns) |
+| **8** | **Haider Ali** | Pakistan A | **-0.3048** | -20.04 | -17.56 | 33 | Qualified (33 >= 30 balls across 4 inns) |
+| **9** | **Hammad Mirza** | Oman | **-0.3234** | +4.60 | -0.51 | 39 | Qualified (39 >= 30 balls across 3 inns) |
+| **10** | **Yasim Murtaza** | Hong Kong | **-0.4420** | -5.40 | -4.34 | 42 | Qualified (42 >= 30 balls across 3 inns) |
+
+#### Top Development Bowlers (Development Matches Only - All Qualified)
+*Note: Exactly 8 bowlers in the 15 Emerging Teams matches met the 24 band balls qualification threshold. All 72 participating bowlers are preserved in `bowlers_development.csv`.*
+| Rank | Player | Team | Adjusted Rating | Runs Saved /Over | Wicket Comp | Last-Over Score | Pressure Balls | Sample Status |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| **1** | **Shahnawaz Dhani** | Pakistan A | **1.1476** | +4.35 | +1.46 | +0.00 | 36 | Qualified (36 band balls, 0 last-over balls) |
+| **2** | **Eshan Malinga** | Sri Lanka A | **0.8826** | +2.01 | +4.74 | +1.59 | 42 | Qualified (36 band balls, 6 last-over balls) |
+| **3** | **Allah Ghazanfar** | Afghanistan A | **0.8732** | +1.37 | +6.53 | -4.00 | 39 | Qualified (33 band balls, 6 last-over balls) |
+| **4** | **Faridoon Dawoodzai** | Afghanistan A | **0.3804** | -1.47 | +9.94 | -7.50 | 32 | Qualified (26 band balls, 6 last-over balls) |
+| **5** | **Nimesh Vimukthi** | Sri Lanka A | **-0.1095** | +0.31 | +0.84 | +0.00 | 42 | Qualified (42 band balls, 0 last-over balls) |
+| **6** | **Sharafuddin Ashraf** | Afghanistan A | **-0.1134** | +0.83 | -0.64 | +0.00 | 33 | Qualified (33 band balls, 0 last-over balls) |
+| **7** | **Karim Janat** | Afghanistan A | **-1.1437** | -1.18 | -4.78 | -4.50 | 34 | Qualified (28 band balls, 6 last-over balls) |
+| **8** | **Bilal Sami** | Afghanistan A | **-1.8134** | -2.50 | -7.25 | +0.09 | 35 | Qualified (29 band balls, 6 last-over balls) |
+
+---
+
+## 5. Senior Rankings: Sets 1, 2, and 3
 
 ### Set 1: Rajasthan Royals (RR Players Only)
 #### Top 10 RR Batters (Min 30 Pressure Balls)
@@ -224,8 +283,8 @@ A single unified expected-value baseline was constructed across all **179,336 qu
 
 ---
 
-### Set 3: All Players (Global Pool - Pakistan Included)
-#### Top 10 All Batters (Min 30 RR / 60 Others)
+### Set 3: All Senior Players (Global Senior Pool - Pakistan Included)
+#### Top 10 All Senior Batters (Min 30 RR / 60 Others)
 | Rank | Player | Nationality | Adjusted Rating | Runs Above /100b | Dismissal Penalty | Pressure Balls |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
 | **1** | **Atharwa Taide** | India | **4.2893** | -19.81 | -34.54 | 111 |
@@ -239,7 +298,7 @@ A single unified expected-value baseline was constructed across all **179,336 qu
 | **9** | **Tom Banton** | England | **2.5399** | +16.45 | -12.40 | 160 |
 | **10** | **Karun Nair** | India | **2.4366** | +30.07 | -8.41 | 89 |
 
-#### Top 10 All Bowlers (Min 24 RR / 48 Others)
+#### Top 10 All Senior Bowlers (Min 24 RR / 48 Others)
 | Rank | Player | Nationality | Adjusted Rating | Runs Saved /Over | Wicket Comp | Last-Over Score | Pressure Balls |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: |
 | **1** | **Akash Madhwal** | India | **5.9868** | +2.01 | +20.23 | -0.79 | 104 |
@@ -255,10 +314,11 @@ A single unified expected-value baseline was constructed across all **179,336 qu
 
 ---
 
-## 7. Sanity Checks & Verification (Step 9)
+## 6. Sanity Checks & Mathematical Verification (Step 7)
 
-All sanity checks passed strictly across all three sets:
-1. **Batter Dismissal Derivative:** Confirmed correlation $r = -1.0000$ between dismissal penalty and raw score; holding runs scored constant, more dismissals strictly lowers a batter's rating.
-2. **Bowler Economy Derivative:** Confirmed correlation $r = +1.0000$ between runs saved and raw score; holding wickets constant, conceding more runs strictly lowers a bowler's rating.
-3. **Pakistan Exclusion Verification:** Verified **zero (0) Pakistan players** in Set 2 (Next Season Eligible). In Set 3, Pakistan players (such as Shan Masood #3, Mohammad Rizwan #5, Mohammad Nawaz #4) are legitimately ranked.
-4. **Threshold Compliance:** Confirmed that **zero** non-RR players in any Top 10 have $< 60$ pressure balls (batters) or $< 48$ band balls (bowlers).
+Every output produced by `backend/pressure_metrics.py` passes automated mathematical assertions:
+1. **Zero Ball Leakage:** Zero Development or Youth deliveries appear in Senior outputs; zero Senior deliveries appear in Young or Development outputs. Match ID sets are strictly disjoint.
+2. **Batter Dismissal Derivative ($r = -1.000$):** Holding runs scored constant, incurring additional dismissals strictly penalizes the batter rating. Correlation between $z(\text{dismissal})$ and the negative component of the raw score is exactly $-1.0000$.
+3. **Bowler Economy Derivative ($r = +1.000$):** Holding wickets and last-over score constant, conceding additional runs strictly lowers runs saved and bowler rating. Correlation is exactly $+1.0000$.
+4. **Threshold Adherence:** Every player in the Young and Development Top-10 lists strictly meets their respective minimum volume threshold ($\ge 30$ pressure balls for batters; $\ge 24$ band balls for bowlers).
+5. **Pakistan Exclusion Verification:** Confirmed exactly 0 Pakistan players in Set 2 (Next Season Eligible). In Set 3, Pakistan players (Shan Masood #3, Mohammad Rizwan #5, Mohammad Nawaz #4) are legitimately ranked.

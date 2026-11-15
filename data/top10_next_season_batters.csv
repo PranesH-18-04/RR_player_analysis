@@ -1,11 +1,121 @@
-rank,player_id,player,nationality,teams,is_rr,in_set2,pressure_balls,pressure_innings,actual_runs,expected_runs,runs_above_expected,runs_above_expected_per_100,actual_dismissals,expected_dismissals,excess_dismissals,dismissals_above_expected_per_inns,dismissal_penalty,pressure_strike_rate,normal_strike_rate,sr_difference,pressure_boundary_pct,normal_boundary_pct,pressure_dismissal_rate,normal_dismissal_rate,dismissal_difference,threshold_applied,shrinkage_k,qualifies,reliability_note,z_runs,z_dismissal,raw_rating,adjusted_rating
-1,6466,Atharwa Taide,India,"Punjab Kings, Sunrisers Hyderabad",False,True,111,4,147,169.0,-21.99,-19.81,3,6.27,-3.27,-0.818,-34.54,132.4,146.8,-14.3,18.0,23.4,0.75,1.0,-0.25,60,60.0,True,Qualified sample (111 >= 60 balls across 4 inns). Reliable trend.,-0.7390993714956786,-7.914568172793085,7.1755,4.6578
-2,50284,Vaibhav Sooryavanshi,India,"India, India A, Rajasthan Royals",True,True,200,17,447,273.3,173.7,86.85,11,9.47,1.53,0.09,1.44,223.5,199.8,23.7,39.5,33.0,0.647,0.909,-0.262,30,30.0,True,Robust sample (200 balls across 17 inns). Highly statistically reliable.,4.02258275343215,0.45952580110788216,3.5631,3.0983
-3,1699,Suryakumar Yadav,India,"India, Mumbai Indians",False,True,1154,69,2036,1689.4,346.58,30.03,51,69.29,-18.29,-0.265,-6.49,176.4,149.7,26.8,27.1,21.4,0.739,0.647,0.092,60,60.0,True,Robust sample (1154 balls across 69 inns). Highly statistically reliable.,1.4859356660666974,-1.3861263726840765,2.8721,2.7301
-4,768,Reeza Hendricks,South Africa,South Africa,False,True,418,20,679,596.3,82.73,19.79,17,23.13,-6.13,-0.306,-9.14,162.4,123.3,39.1,25.1,15.2,0.85,0.783,0.067,60,60.0,True,Robust sample (418 balls across 20 inns). Highly statistically reliable.,1.0287856101951336,-2.0028953841025747,3.0317,2.6511
-5,6273,Tom Banton,England,"England, Gujarat Titans",False,True,160,9,259,232.7,26.32,16.45,5,9.32,-4.32,-0.48,-12.4,161.9,145.7,16.2,22.5,21.6,0.556,0.727,-0.172,60,60.0,True,Robust sample (160 balls across 9 inns). Highly statistically reliable.,0.8796761193151509,-2.7616376396589155,3.6413,2.6482
-6,930,Karun Nair,India,"Delhi Capitals, Lucknow Super Giants, Rajasthan Royals",True,True,89,5,151,124.2,26.77,30.07,3,4.69,-1.69,-0.338,-8.41,169.7,124.6,45.0,29.2,18.5,0.6,1.0,-0.4,30,30.0,True,Robust sample (89 balls across 5 inns). Highly statistically reliable.,1.4877214084724455,-1.8329929771835165,3.3207,2.4836
-7,2756,Shashank Singh,India,"Punjab Kings, Sunrisers Hyderabad",False,True,451,38,777,669.9,107.08,23.74,19,33.58,-14.58,-0.384,-6.77,172.3,93.4,78.9,24.2,6.6,0.5,0.333,0.167,60,60.0,True,Robust sample (451 balls across 38 inns). Highly statistically reliable.,1.2051276727627775,-1.451294419173578,2.6564,2.3445
-8,7897,Namboori Tilak Varma,India,"India, India A, Mumbai Indians",False,True,1199,81,1895,1772.8,122.23,10.19,49,77.4,-28.4,-0.351,-7.67,158.0,118.8,39.2,20.9,13.9,0.605,0.425,0.18,60,60.0,True,Robust sample (1199 balls across 81 inns). Highly statistically reliable.,0.6002074328155428,-1.6607631400326905,2.261,2.1532
-9,23450,Sai Sudharsan,India,"Gujarat Titans, India",False,True,709,38,1132,1042.1,89.91,12.68,29,39.24,-10.24,-0.27,-7.39,159.7,131.6,28.1,23.0,16.8,0.763,0.537,0.227,60,60.0,True,Robust sample (709 balls across 38 inns). Highly statistically reliable.,0.7113698975733741,-1.5955950935431888,2.307,2.127
-10,953,Lokesh Rahul,India,"Delhi Capitals, India, Lucknow Super Giants",False,True,777,41,1161,1092.5,68.46,8.81,32,43.44,-11.44,-0.279,-7.44,149.4,131.5,17.9,19.8,17.0,0.78,0.577,0.204,60,60.0,True,Robust sample (777 balls across 41 inns). Highly statistically reliable.,0.5385993198172266,-1.6072322447020286,2.1458,1.992
+rank,player_id,player,nationality,tier,teams,is_rr,in_set2,pressure_balls,pressure_innings,actual_runs,expected_runs,runs_above_expected,runs_above_expected_per_100,actual_dismissals,expected_dismissals,excess_dismissals,dismissals_above_expected_per_inns,dismissal_penalty,pressure_strike_rate,normal_strike_rate,sr_difference,pressure_boundary_pct,normal_boundary_pct,pressure_dismissal_rate,normal_dismissal_rate,dismissal_difference,threshold_applied,shrinkage_k,qualifies,eligibility,reliability_note,z_runs,z_dismissal,raw_rating,adjusted_rating
+1,6466,Atharwa Taide,India,Senior,"Punjab Kings, Sunrisers Hyderabad",False,True,111,4,147,169.0,-21.99,-19.81,3,6.27,-3.27,-0.818,-34.54,132.4,146.8,-14.3,18.0,23.4,0.75,1.0,-0.25,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Qualified sample (111 >= 60 balls across 4 inns). Reliable trend.,-0.7390993714956786,-7.914568172793085,7.1755,4.6578
+2,50284,Vaibhav Sooryavanshi,India,Senior,"India, India A, Rajasthan Royals",True,True,200,17,447,273.3,173.7,86.85,11,9.47,1.53,0.09,1.44,223.5,199.8,23.7,39.5,33.0,0.647,0.909,-0.262,30,30.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (200 balls across 17 inns). Highly statistically reliable.,4.02258275343215,0.45952580110788216,3.5631,3.0983
+3,1699,Suryakumar Yadav,India,Senior,"India, Mumbai Indians",False,True,1154,69,2036,1689.4,346.58,30.03,51,69.29,-18.29,-0.265,-6.49,176.4,149.7,26.8,27.1,21.4,0.739,0.647,0.092,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (1154 balls across 69 inns). Highly statistically reliable.,1.4859356660666974,-1.3861263726840765,2.8721,2.7301
+4,768,Reeza Hendricks,South Africa,Senior,South Africa,False,True,418,20,679,596.3,82.73,19.79,17,23.13,-6.13,-0.306,-9.14,162.4,123.3,39.1,25.1,15.2,0.85,0.783,0.067,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (418 balls across 20 inns). Highly statistically reliable.,1.0287856101951336,-2.0028953841025747,3.0317,2.6511
+5,6273,Tom Banton,England,Senior,"England, Gujarat Titans",False,True,160,9,259,232.7,26.32,16.45,5,9.32,-4.32,-0.48,-12.4,161.9,145.7,16.2,22.5,21.6,0.556,0.727,-0.172,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (160 balls across 9 inns). Highly statistically reliable.,0.8796761193151509,-2.7616376396589155,3.6413,2.6482
+6,930,Karun Nair,India,Senior,"Delhi Capitals, Lucknow Super Giants, Rajasthan Royals",True,True,89,5,151,124.2,26.77,30.07,3,4.69,-1.69,-0.338,-8.41,169.7,124.6,45.0,29.2,18.5,0.6,1.0,-0.4,30,30.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (89 balls across 5 inns). Highly statistically reliable.,1.4877214084724455,-1.8329929771835165,3.3207,2.4836
+7,2756,Shashank Singh,India,Senior,"Punjab Kings, Sunrisers Hyderabad",False,True,451,38,777,669.9,107.08,23.74,19,33.58,-14.58,-0.384,-6.77,172.3,93.4,78.9,24.2,6.6,0.5,0.333,0.167,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (451 balls across 38 inns). Highly statistically reliable.,1.2051276727627775,-1.451294419173578,2.6564,2.3445
+8,7897,Namboori Tilak Varma,India,Senior,"India, India A, Mumbai Indians",False,True,1199,81,1895,1772.8,122.23,10.19,49,77.4,-28.4,-0.351,-7.67,158.0,118.8,39.2,20.9,13.9,0.605,0.425,0.18,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (1199 balls across 81 inns). Highly statistically reliable.,0.6002074328155428,-1.6607631400326905,2.261,2.1532
+9,23450,Sai Sudharsan,India,Senior,"Gujarat Titans, India",False,True,709,38,1132,1042.1,89.91,12.68,29,39.24,-10.24,-0.27,-7.39,159.7,131.6,28.1,23.0,16.8,0.763,0.537,0.227,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (709 balls across 38 inns). Highly statistically reliable.,0.7113698975733741,-1.5955950935431888,2.307,2.127
+10,953,Lokesh Rahul,India,Senior,"Delhi Capitals, India, Lucknow Super Giants",False,True,777,41,1161,1092.5,68.46,8.81,32,43.44,-11.44,-0.279,-7.44,149.4,131.5,17.9,19.8,17.0,0.78,0.577,0.204,60,60.0,True,"Eligible (>=0      60
+2      60
+3      60
+4      60
+6      60
+       ..
+643    60
+644    60
+645    30
+646    60
+647    30
+Name: threshold_applied, Length: 428, dtype: int64 balls)",Robust sample (777 balls across 41 inns). Highly statistically reliable.,0.5385993198172266,-1.6072322447020286,2.1458,1.992
