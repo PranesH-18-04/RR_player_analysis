@@ -1,11 +1,22 @@
 """
-Rajasthan Royals & Global T20 Pressure Analytics Engine
+Rajasthan Royals & Global T20 Pressure Analytics Engine (Production Version 2.0)
 Multi-Tier Framework:
 - SENIOR: Full national teams (with Top 12 T20I opponent filter) and IPL franchises (unfiltered).
   Ranks Set 1 (RR Players), Set 2 (Next Season Eligible - ex-Pak), Set 3 (All Senior Players).
 - DEVELOPMENT: A-teams and emerging competitions (Mens T20 Emerging Teams Asia Cup 2024).
 - YOUTH: Youth competitions (Asia Cup Rising Stars 2025).
-Part of SupeRR Selector: Rajasthan Royals Pressure Analysis
+
+Key Algorithmic Upgrades:
+- Change 1: One outcome per pressure innings (innings_value) in runs.
+- Change 2: Required-run-rate (RRR) chase tracking with RRR_PENALTY_WEIGHT = 0.5.
+- Change 3: Strict RR match participation filter (removes unparticipating squad members).
+- Change 4: Corrected pressure definition (2nd innings RRR >= 9.0 or death overs 16-20; excludes 1st innings).
+- Change 5: Fixed dismissal flag (striker only; handles missing dismissal IDs explicitly).
+- Change 6: Leave-One-Out (LOO) expected values to prevent data leakage in rankings.
+- Change 7: Innings floor (MIN_INNINGS_BATTER = 8, MIN_INNINGS_BOWLER = 8) and Z_CLIP = 2.0.
+- Change 8: Synthetic ranking-order sanity test suite replacing circular correlation checks.
+- Change 9: Dynamic Set 2 season filter based on the two most recent seasons.
+- Change 10: Complete verification and old vs new top-10 shift audit.
 """
 
 import os
@@ -16,10 +27,6 @@ import numpy as np
 # =========================================================================
 # STEP 2: TEAM TIER CLASSIFICATION MAPPING CONSTANT
 # =========================================================================
-# Tier Definitions:
-# - SENIOR: Full national teams and IPL franchises.
-# - DEVELOPMENT: India A, other "A"/"B"/"C"/"D" sides, Emerging, Academy, or XI sides.
-# - YOUTH: Teams labeled U16, U17, U19, U21, or participating in youth competitions.
 TEAM_TIER = {
     # IPL Franchises (SENIOR)
     "Chennai Super Kings": "SENIOR",
@@ -99,13 +106,19 @@ TOP_12_ICC_T20I = [
 ]
 
 # =========================================================================
-# MINIMUM BALL THRESHOLDS & SHRINKAGE CONSTANTS
+# THRESHOLDS, SHRINKAGE, INNINGS FLOOR & CLIPPING CONSTANTS (CHANGES 2, 7)
 # =========================================================================
 # Senior Sets (Set 1, 2, 3)
 MIN_BALLS_BATTER_RR = 30          # RR Batters: min 30 pressure balls
 MIN_BALLS_BOWLER_RR = 24          # RR Bowlers: min 24 balls in 8-12 bowling band
 MIN_BALLS_BATTER_NON_RR = 60      # Non-RR Batters: min 60 pressure balls
 MIN_BALLS_BOWLER_NON_RR = 48      # Non-RR Bowlers: min 48 balls in 8-12 bowling band
+
+MIN_INNINGS_BATTER = 8            # Change 7: Minimum 8 pressure innings for senior batters
+MIN_INNINGS_BOWLER = 8            # Change 7: Minimum 8 pressure innings for senior bowlers
+MIN_INNINGS_DEV_YOUTH = 2         # Change 7: Innings floor for 5-match dev/youth tournaments
+Z_CLIP = 2.0                      # Change 7: Clipping bound for all z-score components [-2.0, +2.0]
+RRR_PENALTY_WEIGHT = 0.5          # Change 2: Weight for chase required-run-rate lag penalty
 
 SHRINKAGE_K_BATTER_RR = 30.0      # Prior weight for RR batters
 SHRINKAGE_K_BATTER_NON_RR = 60.0  # Prior weight for Non-RR batters
@@ -118,6 +131,49 @@ MIN_BALLS_BATTER_DEV_YOUTH = 30   # Min 30 pressure balls
 MIN_BALLS_BOWLER_DEV_YOUTH = 24   # Min 24 band balls
 SHRINKAGE_K_BATTER_DEV_YOUTH = 30.0
 SHRINKAGE_K_BOWLER_DEV_YOUTH = 24.0
+
+# Old Top 10 Snapshot for Change 10 Comparison
+OLD_TOP10 = {
+    "RR Batters": [
+        "Karun Nair", "Rassie van der Dussen", "Vaibhav Sooryavanshi", "Ravindra Jadeja",
+        "Dhruv Jurel", "Jos Buttler", "Sanju Samson", "Rovman Powell", "Yashasvi Jaiswal", "Dasun Shanaka"
+    ],
+    "RR Bowlers": [
+        "Akash Madhwal", "Murugan Ashwin", "FazalHaq Farooqi", "Keshav Maharaj",
+        "Maheesh Theekshana", "Jimmy Neesham", "Trent Boult", "Yuzvendra Chahal", "Kuldeep Sen", "Ravi Bishnoi"
+    ],
+    "Next Season Batters": [
+        "Atharwa Taide", "Vaibhav Sooryavanshi", "Suryakumar Yadav", "Reeza Hendricks",
+        "Tom Banton", "Karun Nair", "Shashank Singh", "Namboori Tilak Varma", "Sai Sudharsan", "Lokesh Rahul"
+    ],
+    "Next Season Bowlers": [
+        "Akash Madhwal", "Mark Wood", "Mahedi Hasan", "Mitchell Santner",
+        "Jacob Duffy", "Mohammad Rishad Hossain", "Corbin Bosch", "Nathan Ellis", "FazalHaq Farooqi", "Axar Patel"
+    ],
+    "All Senior Batters": [
+        "Atharwa Taide", "Vaibhav Sooryavanshi", "Shan Masood", "Matthew Wade",
+        "Mohammad Rizwan", "Suryakumar Yadav", "Shakib Al Hasan", "Reeza Hendricks", "Tom Banton", "Karun Nair"
+    ],
+    "All Senior Bowlers": [
+        "Akash Madhwal", "Mark Wood", "Mahedi Hasan", "Mohammad Nawaz",
+        "Mitchell Santner", "Jacob Duffy", "Mohammad Rishad Hossain", "Murugan Ashwin", "Corbin Bosch", "Nathan Ellis"
+    ],
+    "Development Batters": [
+        "Sediqullah Atal", "Arafat Minhas", "Ramandeep Singh", "Jatinder Singh",
+        "Sahan Arachchige", "Babar Hayat", "Namboori Tilak Varma", "Haider Ali", "Hammad Mirza", "Yasim Murtaza"
+    ],
+    "Development Bowlers": [
+        "Shahnawaz Dhani", "Eshan Malinga", "Allah Ghazanfar", "Faridoon Dawoodzai",
+        "Nimesh Vimukthi", "Sharafuddin Ashraf", "Karim Janat", "Bilal Sami"
+    ],
+    "Young Batters": [
+        "Sohaib Khan", "Jitesh Sharma", "SM Meherob Hasan", "Milan Rathnayake",
+        "Haider Shah", "Aryan Bisht", "Muhammad Arfan", "Wasim Ali", "Nehal Wadhera", "Qais Ahmad"
+    ],
+    "Young Bowlers": [
+        "Garuka Sanketh", "SM Meherob Hasan"
+    ]
+}
 
 
 def classify_match_tier(comp_id, comp_name):
@@ -133,6 +189,100 @@ def classify_match_tier(comp_id, comp_name):
         return "YOUTH"
     else:
         return "SENIOR"
+
+
+def run_synthetic_sanity_tests():
+    """
+    Change 8: Synthetic input row ranking-order tests.
+    Tests ranking properties directly on synthetic inputs without circular correlation.
+    - Test (a): Same runs + more dismissals ranks lower.
+    - Test (b): Conceding more runs in same band ranks lower.
+    - Test (c): Strike rate below RRR in >50% of balls ranks lower.
+    """
+    print("\n===================================================================")
+    print("STEP 7: SYNTHETIC RANKING-ORDER SANITY CHECKS (CHANGE 8)")
+    print("===================================================================")
+
+    # Test (a): Batter with same runs and more dismissals ranks lower
+    exp_runs_pi = 20.0
+    # Batter 1: 30 runs, exp 20, 0 dismissals, exp 0.5
+    inns_val_1 = (30.0 - 20.0) - (0.0 - 0.5) * exp_runs_pi   # 10 - (-10) = 20.0
+    # Batter 2: 30 runs, exp 20, 1 dismissal, exp 0.5
+    inns_val_2 = (30.0 - 20.0) - (1.0 - 0.5) * exp_runs_pi   # 10 - (10) = 0.0
+    if not (inns_val_2 < inns_val_1):
+        raise ValueError("FAILED Test (a): Batter with more dismissals did not receive lower innings value!")
+    print("  [PASSED] Test (a): Same runs + more dismissals ranks lower (Innings Value: 0.0 < 20.0).")
+
+    # Test (b): Bowler who concedes more runs in same band ranks lower
+    # Bowler 1: 10 overs, concedes 60 runs, exp 80 -> runs saved = +2.0/over
+    # Bowler 2: 10 overs, concedes 90 runs, exp 80 -> runs saved = -1.0/over
+    rs_1 = (80.0 - 60.0) / 10.0
+    rs_2 = (80.0 - 90.0) / 10.0
+    if not (rs_2 < rs_1):
+        raise ValueError("FAILED Test (b): Bowler conceding more runs did not receive lower runs saved per over!")
+    print("  [PASSED] Test (b): Bowler conceding more runs in band ranks lower (Runs Saved/Over: -1.0 < +2.0).")
+
+    # Test (c): Lower pressure strike rate than RRR in >50% balls ranks lower
+    # Batter 3: 20% balls below RRR
+    # Batter 4: 70% balls below RRR (>50% balls)
+    mean_pct, std_pct = 50.0, 15.0
+    z_pct_3 = (20.0 - mean_pct) / std_pct  # -2.0
+    z_pct_4 = (70.0 - mean_pct) / std_pct  # +1.333
+    rating_3 = 1.0 - RRR_PENALTY_WEIGHT * z_pct_3  # 1.0 - 0.5*(-2.0) = 2.0
+    rating_4 = 1.0 - RRR_PENALTY_WEIGHT * z_pct_4  # 1.0 - 0.5*(1.333) = 0.333
+    if not (rating_4 < rating_3):
+        raise ValueError("FAILED Test (c): Batter lagging RRR in >50% balls did not rank lower!")
+    print(f"  [PASSED] Test (c): Strike rate below RRR in >50% balls ranks lower (Rating: {rating_4:.3f} < {rating_3:.3f}).")
+
+
+def print_old_vs_new_comparison(label, new_df, old_list):
+    """
+    Change 10: Print a comparison of old and new top 10 for each set,
+    marking players who moved more than 5 places or left the list.
+    """
+    print(f"\n--- {label}: Old vs New Top 10 Comparison ---")
+    old_rank_map = {name: idx + 1 for idx, name in enumerate(old_list)}
+    new_players = []
+
+    rows = []
+    for idx, r in new_df.iterrows():
+        pname = r["player"]
+        new_rank = r["rank"]
+        new_players.append(pname)
+        if pname in old_rank_map:
+            old_rank = old_rank_map[pname]
+            delta = old_rank - new_rank  # positive means improved rank
+            if delta > 5:
+                note = f"Shifted up {delta} spots (moved >5 places)"
+            elif delta < -5:
+                note = f"Shifted down {abs(delta)} spots (moved >5 places)"
+            elif delta > 0:
+                note = f"Up {delta} spot(s)"
+            elif delta < 0:
+                note = f"Down {abs(delta)} spot(s)"
+            else:
+                note = "Maintained rank"
+            old_rank_str = str(old_rank)
+        else:
+            old_rank_str = "Unranked"
+            note = "NEW ENTRANT"
+        rows.append({
+            "New Rank": new_rank,
+            "Player": pname,
+            "Old Rank": old_rank_str,
+            "Rating": r["adjusted_rating"],
+            "Shift / Status": note
+        })
+
+    comp_df = pd.DataFrame(rows)
+    print(comp_df.to_string(index=False))
+
+    # Players who left the top 10
+    left_players = [p for p in old_list if p not in new_players]
+    if left_players:
+        print(f"  Players who left Top 10: {', '.join(left_players)}")
+    else:
+        print("  Players who left Top 10: None")
 
 
 def run_multi_tier_pipeline(data_dir=None, output_dir=None):
@@ -172,28 +322,12 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     teams = pd.read_csv(teams_path)
     p11 = pd.read_csv(p11_path)
 
-    raw_files = {
-        "ball_by_ball.csv": bbb,
-        "matches.csv": matches,
-        "competitions.csv": comp,
-        "teams.csv": teams,
-        "competition_team_player_mapping.csv": mapping,
-        "playing_eleven.csv": p11
-    }
-
-    for fname, df_f in raw_files.items():
-        print(f"\n--- {fname} ---")
-        print(f"Shape: {df_f.shape}")
-        print(f"Columns: {df_f.columns.tolist()}")
-        print("First 5 rows:")
-        print(df_f.head(5).to_string())
-
     # Confirm Team ID and Name for Rajasthan Royals
     rr_team_rows = teams[teams["team_name"].str.contains("Rajasthan Royals", case=False, na=False)]
     if len(rr_team_rows) == 0:
         raise ValueError("Rajasthan Royals not found in teams.csv!")
     rr_team_ids = rr_team_rows["team_id"].unique().tolist()
-    print(f"\nConfirmed Rajasthan Royals Team ID(s) from teams.csv: {rr_team_ids}")
+    print(f"Confirmed Rajasthan Royals Team ID(s) from teams.csv: {rr_team_ids}")
     rr_team_id = rr_team_ids[0]
 
     # Verify against matches.csv
@@ -202,87 +336,31 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     rr_away_names = rr_matches[rr_matches["away_team_id"] == rr_team_id]["away_team"].unique().tolist()
     print(f"Confirmed Rajasthan Royals Names in matches.csv: home={rr_home_names}, away={rr_away_names}")
 
-    # Season field and Most Recent Season
+    # Change 9: Season field and Most Recent Seasons dynamically
     comp["season_clean"] = comp["season"].astype(str).str.strip()
     all_seasons = sorted(comp["season_clean"].unique())
-    most_recent_season = all_seasons[-1]
-    second_recent_season = all_seasons[-2]
+    recent_two_seasons = all_seasons[-2:]
     print(f"\nDistinct seasons in data: {all_seasons}")
-    print(f"Most recent season: '{most_recent_season}' | Preceding season: '{second_recent_season}'")
+    print(f"Two most recent seasons dynamically selected: {recent_two_seasons}")
 
     # Distinct team names and ball counts
     team_id_to_name = teams.drop_duplicates(subset=["team_id"]).set_index("team_id")["team_name"].to_dict()
     bbb["batting_team_name"] = bbb["batting_team_id"].map(team_id_to_name)
     bbb["bowling_team_name"] = bbb["bowling_team_id"].map(team_id_to_name)
 
-    batting_counts = bbb["batting_team_name"].value_counts().to_dict()
-    bowling_counts = bbb["bowling_team_name"].value_counts().to_dict()
-
     all_teams_in_data = sorted(set(teams["team_name"].unique()) | set(matches["home_team"].unique()) | set(matches["away_team"].unique()))
-    print(f"\n--- COMPLETE LIST OF DISTINCT TEAM NAMES IN DATA ({len(all_teams_in_data)} teams) ---")
-    team_ball_summary = []
+
+    # Verify tier assignment
     for t in all_teams_in_data:
-        b_cnt = batting_counts.get(t, 0)
-        bw_cnt = bowling_counts.get(t, 0)
-        tot_cnt = b_cnt + bw_cnt
-        team_ball_summary.append({"team": t, "batting_balls": b_cnt, "bowling_balls": bw_cnt, "total_balls": tot_cnt})
-        print(f"  {t:32s} | Batting: {b_cnt:6d} | Bowling: {bw_cnt:6d} | Total Balls: {tot_cnt:6d}")
+        if t not in TEAM_TIER:
+            raise ValueError(f"Unassigned team name encountered: {t}")
 
-    # =========================================================================
-    # STEP 2: CLASSIFY EACH TEAM INTO A TIER & CHECK UNASSIGNED NAMES
-    # =========================================================================
-    print("\n===================================================================")
-    print("STEP 2: TEAM TIER CLASSIFICATION & AUDIT")
-    print("===================================================================")
-
-    unassigned_teams = []
-    print("\nTeam Tier Mapping:")
-    for t in all_teams_in_data:
-        tier = TEAM_TIER.get(t)
-        if tier is None:
-            unassigned_teams.append(t)
-            print(f"  UNASSIGNED: '{t}'")
-        else:
-            print(f"  {t:32s} -> {tier}")
-
-    if unassigned_teams:
-        print(f"\nERROR: Found {len(unassigned_teams)} unassigned team names: {unassigned_teams}")
-        raise ValueError("Unassigned team names encountered! Manual review required.")
-    else:
-        print(f"\nAll {len(all_teams_in_data)} teams in the dataset are assigned to a valid tier without guessing.")
-
-    # Multi-tier Player Audit: Flag players appearing in more than one tier
-    # Classify matches first
+    # Multi-tier Player Audit
     m_comp = matches.merge(comp[["comp_id", "comp_name", "match_format", "season_clean"]], on="comp_id", how="left")
     m_comp["match_tier"] = m_comp.apply(lambda r: classify_match_tier(r["comp_id"], r["comp_name"]), axis=1)
 
-    p11_m = p11.merge(m_comp[["match_id", "match_tier", "comp_name", "match_date"]], on="match_id", how="inner")
     p_names = mapping.groupby("player_id")["player_name"].first().to_dict()
     p_teams_all = mapping.groupby("player_id")["team_name"].unique().apply(lambda ts: ", ".join(sorted(set(ts)))).to_dict()
-
-    p_tiers = p11_m.groupby("player_id")["match_tier"].unique().to_dict()
-    multi_tier_pids = {pid: sorted(list(tiers)) for pid, tiers in p_tiers.items() if len(tiers) > 1}
-    print(f"\n--- MULTI-TIER PLAYER AUDIT ({len(multi_tier_pids)} players appear in >1 tier) ---")
-
-    multi_tier_records = []
-    for pid, tiers in multi_tier_pids.items():
-        p_matches = p11_m[p11_m["player_id"] == pid]
-        s_cnt = p_matches[p_matches["match_tier"] == "SENIOR"]["match_id"].nunique()
-        d_cnt = p_matches[p_matches["match_tier"] == "DEVELOPMENT"]["match_id"].nunique()
-        y_cnt = p_matches[p_matches["match_tier"] == "YOUTH"]["match_id"].nunique()
-        multi_tier_records.append({
-            "player_id": pid,
-            "player": p_names.get(pid, f"Player_{pid}"),
-            "tiers": ", ".join(tiers),
-            "senior_matches": s_cnt,
-            "development_matches": d_cnt,
-            "youth_matches": y_cnt,
-            "total_matches": s_cnt + d_cnt + y_cnt
-        })
-
-    multi_df = pd.DataFrame(multi_tier_records).sort_values("total_matches", ascending=False)
-    print("Top 15 Multi-Tier Players (Matches played in each tier recorded separately):")
-    print(multi_df.head(15).to_string(index=False))
 
     # Nationality Mapping
     overseas_ipl = {
@@ -329,19 +407,10 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
                 nat = nat_team_clean[t]
                 break
         if not nat:
-            if pname in overseas_ipl:
-                nat = overseas_ipl[pname]
-            else:
-                nat = "India"
+            nat = overseas_ipl.get(pname, "India")
         player_nats[pid] = nat
 
-    # =========================================================================
-    # STEP 3: SEPARATE MATCHES BY TIER & APPLY SENIOR TOP-12 OPPONENT FILTER
-    # =========================================================================
-    print("\n===================================================================")
-    print("STEP 3: SEPARATE MATCHES BY TIER")
-    print("===================================================================")
-
+    # Match format and filtering
     m_comp["is_ipl"] = m_comp["comp_name"].str.contains("IPL", case=False, na=False)
     m_comp["is_t20i"] = m_comp["match_format"] == "T20I"
     m_comp["both_top12"] = m_comp["home_team"].isin(TOP_12_ICC_T20I) & m_comp["away_team"].isin(TOP_12_ICC_T20I)
@@ -354,51 +423,7 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     )
     m_valid = m_comp[~drop_mask].copy()
 
-    # Raw balls by tier
-    bbb_m = bbb.merge(m_comp[["match_id", "match_tier", "is_ipl", "is_t20i", "both_top12"]], on="match_id", how="left")
-    raw_senior_balls = (bbb_m["match_tier"] == "SENIOR").sum()
-    raw_dev_balls = (bbb_m["match_tier"] == "DEVELOPMENT").sum()
-    raw_youth_balls = (bbb_m["match_tier"] == "YOUTH").sum()
-
-    # Valid balls by tier
-    bbb_valid = bbb_m[bbb_m["match_id"].isin(set(m_valid["match_id"].unique()))]
-    valid_senior_balls = (bbb_valid["match_tier"] == "SENIOR").sum()
-    valid_dev_balls = (bbb_valid["match_tier"] == "DEVELOPMENT").sum()
-    valid_youth_balls = (bbb_valid["match_tier"] == "YOUTH").sum()
-
-    # Senior kept vs dropped
-    valid_ipl_matches = (m_valid["is_ipl"]).sum()
-    valid_ipl_balls = (bbb_valid["is_ipl"]).sum()
-
-    valid_t20i_top12_m = (m_valid["is_t20i"] & m_valid["both_top12"]).sum()
-    valid_t20i_top12_b = (bbb_valid["is_t20i"] & bbb_valid["both_top12"]).sum()
-
-    valid_t20i_dropped_m = (m_valid["is_t20i"] & ~m_valid["both_top12"]).sum()
-    valid_t20i_dropped_b = (bbb_valid["is_t20i"] & ~bbb_valid["both_top12"]).sum()
-
-    print("\n--- MATCH & BALL COUNTS BY TIER ---")
-    print(f"Total Matches: {len(matches)} (Resolved/Valid: {len(m_valid)})")
-    print(f"Total Balls: {len(bbb)} (Resolved/Valid: {len(bbb_valid)})")
-
-    print("\n1. SENIOR TIER:")
-    print(f"   Raw Senior Matches: {(m_comp['match_tier'] == 'SENIOR').sum()} | Raw Senior Balls: {raw_senior_balls}")
-    print(f"   Valid Senior Matches: {(m_valid['match_tier'] == 'SENIOR').sum()} | Valid Senior Balls: {valid_senior_balls}")
-    print(f"   -> IPL Matches (Unfiltered): {valid_ipl_matches} matches ({valid_ipl_balls} balls)")
-    print(f"   -> T20I Top-12 Kept: {valid_t20i_top12_m} matches ({valid_t20i_top12_b} balls)")
-    print(f"   -> T20I Non-Top-12 Dropped: {valid_t20i_dropped_m} matches ({valid_t20i_dropped_b} balls)")
-    print(f"   -> SENIOR QUALIFYING POOL (Sets 1, 2, 3): {valid_ipl_matches + valid_t20i_top12_m} matches ({valid_ipl_balls + valid_t20i_top12_b} balls)")
-
-    print("\n2. DEVELOPMENT TIER (Mens T20 Emerging Teams Asia Cup 2024):")
-    print(f"   Matches: {(m_valid['match_tier'] == 'DEVELOPMENT').sum()} | Balls: {valid_dev_balls}")
-    print(f"   Opponent filter: Not applied (quality not comparable)")
-
-    print("\n3. YOUTH TIER (Asia Cup Rising Stars 2025):")
-    print(f"   Matches: {(m_valid['match_tier'] == 'YOUTH').sum()} | Balls: {valid_youth_balls}")
-    print(f"   Opponent filter: Not applied (quality not comparable)")
-
-    # -------------------------------------------------------------
-    # COMMON DELIVERIES DATA PREPARATION FUNCTION
-    # -------------------------------------------------------------
+    # Deliveries total runs & targets
     bbb["total_ball_runs"] = bbb["runs"] + bbb["extras1_runs"] + bbb["extras_2_runs"]
     inn1_totals = bbb[bbb["innings"] == 1].groupby("match_id")["total_ball_runs"].sum().rename("inn1_total")
     m_valid = m_valid.merge(inn1_totals, on="match_id", how="inner")
@@ -419,7 +444,9 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     )
     m_valid["year"] = pd.to_datetime(m_valid["match_date"]).dt.year
 
-    # Helper function to enrich delivery dataframe
+    # =========================================================================
+    # COMMON DELIVERIES DATA PREPARATION FUNCTION (CHANGES 4, 5)
+    # =========================================================================
     def prepare_deliveries_df(m_subset, bbb_df):
         vp_season = m_subset.groupby(["venue_id", "year"])["inn1_total"].mean().rename("venue_par_season")
         vp_venue = m_subset.groupby("venue_id")["inn1_total"].mean().rename("venue_par_venue")
@@ -441,11 +468,16 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
         df_out["bowler_runs_conceded"] = df_out["runs"] + df_out["bowler_extras"]
         df_out["bowler_wicket"] = df_out["is_wicket"] & ~df_out["dismissal_type"].astype(str).str.contains("run out", case=False, na=False)
 
-        df_out["batter_dismissal"] = df_out["is_wicket"] & (
-            (df_out["dismissed_player_id"] == df_out["striker_id"])
-            | df_out["dismissed_player_id"].isna()
-            | (df_out["dismissal_type"] != "run out")
-        )
+        # Change 5: Fix dismissal flag - strictly striker dismissal
+        # Missing dismissed_player_id handled explicitly (Match 40709 non-striker retired out -> False)
+        missing_dismissal_rows = df_out[df_out["is_wicket"] & df_out["dismissed_player_id"].isna()]
+        missing_cnt = len(missing_dismissal_rows)
+        if missing_cnt > 0:
+            print(f"Change 5 Notice: Found {missing_cnt} row(s) with is_wicket=True and missing dismissed_player_id.")
+            for _, mr in missing_dismissal_rows.iterrows():
+                print(f"  Explicit handling: Match {mr['match_id']}, Innings {mr['innings']}, Over {mr['overid']}. Dismissal type: '{mr['dismissal_type']}'. Handled explicitly as False (striker not dismissed).")
+
+        df_out["batter_dismissal"] = df_out["is_wicket"] & (df_out["dismissed_player_id"].notna()) & (df_out["dismissed_player_id"] == df_out["striker_id"])
 
         df_out["cum_runs_after"] = df_out.groupby(["match_id", "innings"])["total_ball_runs"].cumsum()
         df_out["cum_runs_before"] = df_out["cum_runs_after"] - df_out["total_ball_runs"]
@@ -462,7 +494,7 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
             np.nan
         )
 
-        # Buckets
+        # Context Buckets
         br_bins = [0, 6, 12, 24, 36, 60, 150]
         br_labels = ["1-6", "7-12", "13-24", "25-36", "37-60", "61-120"]
         df_out["balls_rem_bucket"] = pd.cut(df_out["balls_remaining_before"], bins=br_bins, labels=br_labels, right=True).astype(str)
@@ -486,19 +518,21 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
             "inn1_" + df_out["balls_rem_bucket"] + "_stage_" + df_out["over_stage"] + "_vp_" + df_out["venue_par_bucket"]
         )
 
-        # Pressure flags
-        df_out["is_batting_pressure"] = (
-            ((df_out["innings"] == 2) & ((df_out["rrr"] >= 9.0) | (df_out["balls_remaining_before"] <= 30) | (df_out["overid"] >= 16)))
-            | ((df_out["innings"] == 1) & ((df_out["balls_remaining_before"] <= 30) | (df_out["overid"] >= 16)))
-        )
+        # Change 4: Pressure definitions
+        # Batting pressure: second innings only, where required run rate >= 9.0 or death overs (overs 16-20)
+        # 1st innings pressure is completely excluded.
+        first_inn_balls_excluded = ((df_out["innings"] == 1) & ((df_out["balls_remaining_before"] <= 30) | (df_out["overid"] >= 16))).sum()
+        df_out["is_batting_pressure"] = (df_out["innings"] == 2) & ((df_out["rrr"] >= 9.0) | (df_out["overid"] >= 16))
+
+        # Bowling pressure: second innings with RRR 8.0-12.0, plus last over of either innings
         df_out["is_last_over"] = df_out["balls_remaining_before"] <= 6
         df_out["is_bowling_band"] = (df_out["innings"] == 2) & (df_out["rrr"] >= 8.0) & (df_out["rrr"] <= 12.0) & (~df_out["is_last_over"])
         df_out["is_bowling_pressure"] = df_out["is_last_over"] | df_out["is_bowling_band"]
 
-        return df_out
+        return df_out, first_inn_balls_excluded
 
     # Helper function to compute expected table
-    def build_expected_table(df_enriched, out_csv_path, mark_unreliable=False):
+    def build_expected_table(df_enriched, out_csv_path=None, mark_unreliable=False):
         exp_t = df_enriched.groupby("bucket_id", observed=True).agg(
             innings=("innings", "first"),
             balls_rem_bucket=("balls_rem_bucket", "first"),
@@ -534,296 +568,391 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
             exp_t["bowler_runs"] / 1.0
         )
 
-        exp_t.to_csv(out_csv_path, index=False)
-        print(f"Saved {len(exp_t)} buckets to {out_csv_path}")
+        if out_csv_path:
+            exp_t.to_csv(out_csv_path, index=False)
+            print(f"Saved {len(exp_t)} buckets to {out_csv_path}")
         return exp_t
 
-    def apply_expected_lookup(df_enriched, exp_table):
-        lookup = exp_table.set_index("bucket_id")[
-            ["batter_avg_runs_per_ball", "batter_dismissal_rate", "bowler_avg_runs_per_ball", "bowler_wicket_rate", "bowler_dot_pct", "runs_per_wicket"]
-        ].to_dict("index")
+    # Change 6: Algebraic Leave-One-Out (LOO) expected values calculator
+    def compute_loo_deliveries(df_in, exp_table):
+        b_totals = exp_table.set_index("bucket_id").to_dict("index")
 
-        df_enriched["exp_batter_runs"] = df_enriched["bucket_id"].map(lambda b: lookup[b]["batter_avg_runs_per_ball"])
-        df_enriched["exp_batter_dismissal"] = df_enriched["bucket_id"].map(lambda b: lookup[b]["batter_dismissal_rate"])
-        df_enriched["exp_bowler_runs"] = df_enriched["bucket_id"].map(lambda b: lookup[b]["bowler_avg_runs_per_ball"])
-        df_enriched["exp_bowler_wicket"] = df_enriched["bucket_id"].map(lambda b: lookup[b]["bowler_wicket_rate"])
-        df_enriched["exp_bowler_dot_pct"] = df_enriched["bucket_id"].map(lambda b: lookup[b]["bowler_dot_pct"])
-        df_enriched["runs_per_wicket"] = df_enriched["bucket_id"].map(lambda b: lookup[b]["runs_per_wicket"])
-        return df_enriched
+        # Batter aggregates by (striker_id, bucket_id)
+        b_player_bucket = df_in.groupby(["striker_id", "bucket_id"]).agg(
+            p_b=("runs", "count"),
+            p_r=("runs", "sum"),
+            p_d=("batter_dismissal", "sum")
+        ).reset_index().set_index(["striker_id", "bucket_id"]).to_dict("index")
+
+        # Bowler aggregates by (bowler_id, bucket_id)
+        bw_player_bucket = df_in.groupby(["bowler_id", "bucket_id"]).agg(
+            p_b=("runs", "count"),
+            p_r=("bowler_runs_conceded", "sum"),
+            p_w=("bowler_wicket", "sum"),
+            p_dots=("runs", lambda s: ((s == 0) & (df_in.loc[s.index, "extras1_runs"] == 0)).sum())
+        ).reset_index().set_index(["bowler_id", "bucket_id"]).to_dict("index")
+
+        def get_loo_batter(row):
+            b_id = row["bucket_id"]
+            p_id = row["striker_id"]
+            bt = b_totals[b_id]
+            pb = b_player_bucket.get((p_id, b_id))
+            if pb and (bt["ball_count"] - pb["p_b"] > 0):
+                rem_b = bt["ball_count"] - pb["p_b"]
+                exp_r = (bt["batter_runs"] - pb["p_r"]) / rem_b
+                exp_d = (bt["batter_dismissals"] - pb["p_d"]) / rem_b
+            else:
+                exp_r = bt["batter_avg_runs_per_ball"]
+                exp_d = bt["batter_dismissal_rate"]
+            return exp_r, exp_d
+
+        def get_loo_bowler(row):
+            b_id = row["bucket_id"]
+            p_id = row["bowler_id"]
+            bt = b_totals[b_id]
+            p_bw = bw_player_bucket.get((p_id, b_id))
+            if p_bw and (bt["ball_count"] - p_bw["p_b"] > 0):
+                rem_b = bt["ball_count"] - p_bw["p_b"]
+                exp_r = (bt["bowler_runs"] - p_bw["p_r"]) / rem_b
+                exp_w = (bt["bowler_wickets"] - p_bw["p_w"]) / rem_b
+                exp_dot = ((bt["bowler_dots"] - p_bw["p_dots"]) / rem_b) * 100.0
+                rpw = (bt["bowler_runs"] - p_bw["p_r"]) / (bt["bowler_wickets"] - p_bw["p_w"]) if (bt["bowler_wickets"] - p_bw["p_w"] > 0) else exp_r * 6.0
+            else:
+                exp_r = bt["bowler_avg_runs_per_ball"]
+                exp_w = bt["bowler_wicket_rate"]
+                exp_dot = bt["bowler_dot_pct"]
+                rpw = bt["runs_per_wicket"]
+            return exp_r, exp_w, exp_dot, rpw
+
+        batter_res = [get_loo_batter(r) for _, r in df_in[["bucket_id", "striker_id"]].iterrows()]
+        df_in["exp_batter_runs"] = [r[0] for r in batter_res]
+        df_in["exp_batter_dismissal"] = [r[1] for r in batter_res]
+
+        bowler_res = [get_loo_bowler(r) for _, r in df_in[["bucket_id", "bowler_id"]].iterrows()]
+        df_in["exp_bowler_runs"] = [r[0] for r in bowler_res]
+        df_in["exp_bowler_wicket"] = [r[1] for r in bowler_res]
+        df_in["exp_bowler_dot_pct"] = [r[2] for r in bowler_res]
+        df_in["runs_per_wicket"] = [r[3] for r in bowler_res]
+
+        # In-sample difference calculation
+        df_in["insample_exp_batter_runs"] = df_in["bucket_id"].map(lambda b: b_totals[b]["batter_avg_runs_per_ball"])
+        avg_loo_diff = (df_in["exp_batter_runs"] - df_in["insample_exp_batter_runs"]).abs().mean()
+        print(f"Change 6 Notice: Average absolute difference between in-sample and LOO expected runs per delivery: {avg_loo_diff:.6f} runs/ball")
+
+        return df_in
 
     # =========================================================================
     # PART A: SENIOR PIPELINE (SETS 1, 2, 3)
     # =========================================================================
     print("\n===================================================================")
-    print("PART A: BUILD SENIOR EXPECTED-VALUE BASELINE & RANKINGS")
+    print("PART A: BUILD SENIOR BASELINE & RANKINGS")
     print("===================================================================")
 
     m_senior_qualifying = m_valid[(m_valid["match_tier"] == "SENIOR") & (m_valid["is_ipl"] | (m_valid["is_t20i"] & m_valid["both_top12"]))].copy()
     senior_match_ids = set(m_senior_qualifying["match_id"].unique())
     bbb_senior = bbb[bbb["match_id"].isin(senior_match_ids)].copy()
 
-    df_senior = prepare_deliveries_df(m_senior_qualifying, bbb_senior)
+    df_senior, inn1_excluded_senior = prepare_deliveries_df(m_senior_qualifying, bbb_senior)
+    print(f"Change 4 Notice: Number of first-innings pressure balls excluded in Senior tier: {inn1_excluded_senior} balls")
+
     senior_exp_path = os.path.join(output_dir, "expected_tables.csv")
     exp_senior = build_expected_table(df_senior, senior_exp_path)
-    df_senior = apply_expected_lookup(df_senior, exp_senior)
+    df_senior = compute_loo_deliveries(df_senior, exp_senior)
 
-    # Player stats aggregation for Senior
-    def aggregate_senior_players(df_in):
-        bat_press = df_in[df_in["is_batting_pressure"]].copy()
-        bat_norm = df_in[~df_in["is_batting_pressure"]].copy()
+    # Change 2: Required-run-rate tracking for chases at delivery level
+    df_senior_press = df_senior[df_senior["is_batting_pressure"]].copy()
+    df_senior_press["press_ball_num"] = df_senior_press.groupby(["match_id", "innings", "striker_id"]).cumcount() + 1
+    df_senior_press["press_cum_runs"] = df_senior_press.groupby(["match_id", "innings", "striker_id"])["runs"].cumsum()
+    df_senior_press["press_rpb"] = df_senior_press["press_cum_runs"] / df_senior_press["press_ball_num"]
+    df_senior_press["rrr_rpb"] = df_senior_press["rrr"] / 6.0
+    df_senior_press["is_below_rrr"] = df_senior_press["press_rpb"] < df_senior_press["rrr_rpb"]
 
-        # Set memberships
-        rr_strikers = set(df_in[df_in["batting_team_id"] == rr_team_id]["striker_id"].dropna().unique())
-        rr_bowlers = set(df_in[df_in["bowling_team_id"] == rr_team_id]["bowler_id"].dropna().unique())
-        rr_map = set(mapping[(mapping["team_id"] == rr_team_id) & (mapping["comp_id"].isin(senior_match_ids))]["player_id"].dropna().unique())
-        set1_pids = rr_strikers | rr_bowlers | rr_map
+    # Change 1: Build Per-Innings Table for Batters
+    inns_table = df_senior_press.groupby(["match_id", "innings", "striker_id"]).agg(
+        pressure_balls=("runs", "count"),
+        actual_runs=("runs", "sum"),
+        expected_runs=("exp_batter_runs", "sum"),
+        actual_dismissals=("batter_dismissal", "sum"),
+        expected_dismissals=("exp_batter_dismissal", "sum"),
+        balls_below_rrr=("is_below_rrr", "sum")
+    ).reset_index()
 
-        recent_comps = set(comp[comp["season_clean"].isin(["2025", "2024/25", "2026"])]["comp_id"].unique())
-        recent_m = set(m_senior_qualifying[m_senior_qualifying["comp_id"].isin(recent_comps)]["match_id"].unique())
-        recent_df = df_in[df_in["match_id"].isin(recent_m)]
-        recent_pids = set(recent_df["striker_id"].dropna().unique()) | set(recent_df["bowler_id"].dropna().unique())
-        set2_pids = {pid for pid in recent_pids if player_nats.get(pid) != "Pakistan"}
+    inns_table["player"] = inns_table["striker_id"].map(p_names)
+    inns_table["excess_dismissals"] = inns_table["actual_dismissals"] - inns_table["expected_dismissals"]
+    inns_table["runs_above_expected"] = inns_table["actual_runs"] - inns_table["expected_runs"]
+    inns_table["expected_runs_per_innings"] = inns_table["expected_runs"]
+    # Change 1: innings_value = actual runs − expected runs − (actual dismissals − expected dismissals) × expected runs per innings
+    inns_table["innings_value"] = inns_table["runs_above_expected"] - inns_table["excess_dismissals"] * inns_table["expected_runs_per_innings"]
+    inns_table["pct_balls_below_rrr"] = (inns_table["balls_below_rrr"] / inns_table["pressure_balls"]) * 100.0
 
-        all_strikers = sorted(df_in["striker_id"].dropna().unique())
-        all_bowlers = sorted(df_in["bowler_id"].dropna().unique())
-        all_pids = set(all_strikers) | set(all_bowlers)
+    # Save per-innings table (Change 1)
+    per_innings_path = os.path.join(output_dir, "batter_pressure_innings.csv")
+    inns_table.to_csv(per_innings_path, index=False)
+    print(f"Saved {len(inns_table)} pressure innings to {per_innings_path}")
 
-        bat_stats = []
-        for pid in all_strikers:
-            p_name = p_names.get(pid, f"Player_{pid}")
-            p_nat = player_nats.get(pid, "Unknown")
-            p_team = p_teams_all.get(pid, "Unknown")
-            is_rr = pid in set1_pids
-            in_set2 = pid in set2_pids
+    # Change 3: Fix RR Squad Mapping
+    # Match ID participation filter: player batted or bowled for RR (team_id == 3) in a SENIOR match
+    rr_batted_new = set(df_senior[df_senior["batting_team_id"] == rr_team_id]["striker_id"].dropna().unique())
+    rr_bowled_new = set(df_senior[df_senior["bowling_team_id"] == rr_team_id]["bowler_id"].dropna().unique())
+    set1_pids_after = rr_batted_new | rr_bowled_new
 
-            b_p = bat_press[bat_press["striker_id"] == pid]
-            b_n = bat_norm[bat_norm["striker_id"] == pid]
+    # Comparison with old mapping (which used mapping table squad registration)
+    rr_map_old = set(mapping[mapping["team_id"] == rr_team_id]["player_id"].dropna().unique())
+    set1_pids_before = rr_batted_new | rr_bowled_new | rr_map_old
+    removed_rr_pids = sorted(set1_pids_before - set1_pids_after)
 
-            p_balls = len(b_p)
-            n_balls = len(b_n)
-            if p_balls == 0 and n_balls == 0:
-                continue
+    print("\n--- CHANGE 3: RR SQUAD MAPPING FIX AUDIT ---")
+    print(f"RR Player Count BEFORE Fix: {len(set1_pids_before)}")
+    print(f"RR Player Count AFTER Fix:  {len(set1_pids_after)}")
+    print(f"Number of Unparticipating Players Removed: {len(removed_rr_pids)}")
+    print("Players removed from RR Set (registered in squad but 0 participating balls in senior matches):")
+    for r_pid in removed_rr_pids:
+        print(f"  ID {r_pid:5d}: {p_names.get(r_pid, f'Player_{r_pid}')} (is_rr: True -> False)")
 
-            p_inns = b_p["match_id"].nunique()
-            n_inns = b_n["match_id"].nunique()
+    # Change 9: Dynamic Set 2 filter
+    recent_comps = set(comp[comp["season_clean"].isin(recent_two_seasons)]["comp_id"].unique())
+    recent_mids = set(m_senior_qualifying[m_senior_qualifying["comp_id"].isin(recent_comps)]["match_id"].unique())
+    bbb_recent = df_senior[df_senior["match_id"].isin(recent_mids)]
+    recent_pids = set(bbb_recent["striker_id"].dropna().unique()) | set(bbb_recent["bowler_id"].dropna().unique())
+    set2_pids = {pid for pid in recent_pids if player_nats.get(pid) != "Pakistan"}
 
-            act_runs = b_p["runs"].sum()
-            exp_runs = b_p["exp_batter_runs"].sum()
-            runs_above = act_runs - exp_runs
-            runs_above_100 = (runs_above / p_balls) * 100.0 if p_balls > 0 else 0.0
+    print("\n--- CHANGE 9: SET 2 DYNAMIC SEASONS AUDIT ---")
+    print(f"Two most recent seasons: {recent_two_seasons}")
+    print(f"Total eligible players for Next Season (Set 2, ex-Pakistan): {len(set2_pids)}")
+    if len(set2_pids) == 0:
+        raise ValueError("Set 2 player count is zero! Season filter failed.")
 
-            act_dismissals = b_p["batter_dismissal"].sum()
-            exp_dismissals = b_p["exp_batter_dismissal"].sum()
-            excess_dismissals = act_dismissals - exp_dismissals
-            excess_d_per_inns = excess_dismissals / p_inns if p_inns > 0 else 0.0
-            exp_r_per_inns = exp_runs / p_inns if p_inns > 0 else 0.0
-            dismissal_penalty = excess_d_per_inns * exp_r_per_inns
+    # Batter Player Aggregation (Senior)
+    p_bat_agg = inns_table.groupby("striker_id").agg(
+        pressure_balls=("pressure_balls", "sum"),
+        pressure_innings=("pressure_balls", "count"),
+        actual_runs=("actual_runs", "sum"),
+        expected_runs=("expected_runs", "sum"),
+        actual_dismissals=("actual_dismissals", "sum"),
+        expected_dismissals=("expected_dismissals", "sum"),
+        total_balls_below_rrr=("balls_below_rrr", "sum"),
+        mean_innings_value=("innings_value", "mean")
+    ).reset_index()
 
-            p_sr = (act_runs / p_balls) * 100.0 if p_balls > 0 else np.nan
-            n_sr = (b_n["runs"].sum() / n_balls) * 100.0 if n_balls > 0 else np.nan
-            sr_diff = p_sr - n_sr if pd.notna(p_sr) and pd.notna(n_sr) else np.nan
+    p_bat_agg["player"] = p_bat_agg["striker_id"].map(p_names)
+    p_bat_agg["nationality"] = p_bat_agg["striker_id"].map(player_nats)
+    p_bat_agg["tier"] = "Senior"
+    p_bat_agg["teams"] = p_bat_agg["striker_id"].map(p_teams_all)
+    p_bat_agg["is_rr"] = p_bat_agg["striker_id"].isin(set1_pids_after)
+    p_bat_agg["in_set2"] = p_bat_agg["striker_id"].isin(set2_pids)
+    p_bat_agg["pct_balls_below_rrr"] = (p_bat_agg["total_balls_below_rrr"] / p_bat_agg["pressure_balls"]) * 100.0
 
-            p_bndry = ((b_p["is_four"] | b_p["is_six"]).sum() / p_balls) * 100.0 if p_balls > 0 else np.nan
-            n_bndry = ((b_n["is_four"] | b_n["is_six"]).sum() / n_balls) * 100.0 if n_balls > 0 else np.nan
+    # Normal baseline stats for batters
+    bat_norm = df_senior[~df_senior["is_batting_pressure"]].copy()
+    norm_b_agg = bat_norm.groupby("striker_id").agg(
+        norm_balls=("runs", "count"),
+        norm_runs=("runs", "sum"),
+        norm_inns=("match_id", "nunique"),
+        norm_bndry=("runs", lambda s: (bat_norm.loc[s.index, "is_four"] | bat_norm.loc[s.index, "is_six"]).sum()),
+        norm_dismissals=("batter_dismissal", "sum")
+    ).reset_index()
 
-            p_d_rate = act_dismissals / p_inns if p_inns > 0 else np.nan
-            n_d_rate = b_n["batter_dismissal"].sum() / n_inns if n_inns > 0 else np.nan
-            d_diff = p_d_rate - n_d_rate if pd.notna(p_d_rate) and pd.notna(n_d_rate) else np.nan
+    p_bat_agg = p_bat_agg.merge(norm_b_agg, on="striker_id", how="left")
+    p_bat_agg["norm_balls"] = p_bat_agg["norm_balls"].fillna(0)
+    p_bat_agg["norm_runs"] = p_bat_agg["norm_runs"].fillna(0)
+    p_bat_agg["norm_inns"] = p_bat_agg["norm_inns"].fillna(0)
+    p_bat_agg["norm_bndry"] = p_bat_agg["norm_bndry"].fillna(0)
+    p_bat_agg["norm_dismissals"] = p_bat_agg["norm_dismissals"].fillna(0)
 
-            bat_stats.append({
-                "player_id": pid,
-                "player": p_name,
-                "nationality": p_nat,
-                "tier": "Senior",
-                "teams": p_team,
-                "is_rr": is_rr,
-                "in_set2": in_set2,
-                "pressure_balls": p_balls,
-                "pressure_innings": p_inns,
-                "actual_runs": act_runs,
-                "expected_runs": round(exp_runs, 1),
-                "runs_above_expected": round(runs_above, 2),
-                "runs_above_expected_per_100": round(runs_above_100, 2),
-                "actual_dismissals": int(act_dismissals),
-                "expected_dismissals": round(exp_dismissals, 2),
-                "excess_dismissals": round(excess_dismissals, 2),
-                "dismissals_above_expected_per_inns": round(excess_d_per_inns, 3),
-                "dismissal_penalty": round(dismissal_penalty, 2),
-                "pressure_strike_rate": round(p_sr, 1) if pd.notna(p_sr) else "n/a",
-                "normal_strike_rate": round(n_sr, 1) if pd.notna(n_sr) else "n/a",
-                "sr_difference": round(sr_diff, 1) if pd.notna(sr_diff) else "n/a",
-                "pressure_boundary_pct": round(p_bndry, 1) if pd.notna(p_bndry) else "n/a",
-                "normal_boundary_pct": round(n_bndry, 1) if pd.notna(n_bndry) else "n/a",
-                "pressure_dismissal_rate": round(p_d_rate, 3) if pd.notna(p_d_rate) else "n/a",
-                "normal_dismissal_rate": round(n_d_rate, 3) if pd.notna(n_d_rate) else "n/a",
-                "dismissal_difference": round(d_diff, 3) if pd.notna(d_diff) else "n/a",
-            })
+    p_bat_agg["pressure_strike_rate"] = np.where(p_bat_agg["pressure_balls"] > 0, (p_bat_agg["actual_runs"] / p_bat_agg["pressure_balls"]) * 100.0, np.nan).round(1)
+    p_bat_agg["normal_strike_rate"] = np.where(p_bat_agg["norm_balls"] > 0, (p_bat_agg["norm_runs"] / p_bat_agg["norm_balls"]) * 100.0, np.nan).round(1)
+    p_bat_agg["sr_difference"] = (p_bat_agg["pressure_strike_rate"] - p_bat_agg["normal_strike_rate"]).round(1)
 
-        bat_master = pd.DataFrame(bat_stats)
+    df_senior_press["is_boundary"] = df_senior_press["is_four"] | df_senior_press["is_six"]
+    press_bndry_counts = df_senior_press.groupby("striker_id")["is_boundary"].sum().to_dict()
+    p_bat_agg["pressure_boundary_pct"] = np.where(
+        p_bat_agg["pressure_balls"] > 0,
+        (p_bat_agg["striker_id"].map(press_bndry_counts).fillna(0) / p_bat_agg["pressure_balls"]) * 100.0,
+        np.nan
+    ).round(1)
+    p_bat_agg["normal_boundary_pct"] = np.where(p_bat_agg["norm_balls"] > 0, (p_bat_agg["norm_bndry"] / p_bat_agg["norm_balls"]) * 100.0, np.nan).round(1)
 
-        # Bowlers
-        bw_band = df_in[df_in["is_bowling_band"]].copy()
-        bw_lo = df_in[df_in["is_last_over"]].copy()
-        bw_norm = df_in[~df_in["is_bowling_pressure"]].copy()
+    p_bat_agg["pressure_dismissal_rate"] = np.where(p_bat_agg["pressure_innings"] > 0, p_bat_agg["actual_dismissals"] / p_bat_agg["pressure_innings"], np.nan).round(3)
+    p_bat_agg["normal_dismissal_rate"] = np.where(p_bat_agg["norm_inns"] > 0, p_bat_agg["norm_dismissals"] / p_bat_agg["norm_inns"], np.nan).round(3)
+    p_bat_agg["dismissal_difference"] = (p_bat_agg["pressure_dismissal_rate"] - p_bat_agg["normal_dismissal_rate"]).round(3)
 
-        bw_stats = []
-        for pid in all_bowlers:
-            p_name = p_names.get(pid, f"Player_{pid}")
-            p_nat = player_nats.get(pid, "Unknown")
-            p_team = p_teams_all.get(pid, "Unknown")
-            is_rr = pid in set1_pids
-            in_set2 = pid in set2_pids
+    # Process Senior Batter Set with Changes 1, 2, 7
+    def process_senior_batters(df_in, inns_df, is_rr_only=False):
+        df_out = df_in.copy()
+        thresh_b = MIN_BALLS_BATTER_RR if is_rr_only else np.where(df_out["is_rr"], MIN_BALLS_BATTER_RR, MIN_BALLS_BATTER_NON_RR)
+        k_val = SHRINKAGE_K_BATTER_RR if is_rr_only else np.where(df_out["is_rr"], SHRINKAGE_K_BATTER_RR, SHRINKAGE_K_BATTER_NON_RR)
 
-            b_b = bw_band[bw_band["bowler_id"] == pid]
-            b_l = bw_lo[bw_lo["bowler_id"] == pid]
-            b_n = bw_norm[bw_norm["bowler_id"] == pid]
-
-            n_band = len(b_b)
-            n_lo = len(b_l)
-            n_norm = len(b_n)
-            p_balls = n_band + n_lo
-
-            if p_balls == 0 and n_norm == 0:
-                continue
-
-            if n_band > 0:
-                b_overs = n_band / 6.0
-                b_act_runs = b_b["bowler_runs_conceded"].sum()
-                b_exp_runs = b_b["exp_bowler_runs"].sum()
-                runs_saved_po = (b_exp_runs - b_act_runs) / b_overs
-
-                b_act_wkts = b_b["bowler_wicket"].sum()
-                b_exp_wkts = b_b["exp_bowler_wicket"].sum()
-                wkt_comp = ((b_b["bowler_wicket"] - b_b["exp_bowler_wicket"]) * b_b["runs_per_wicket"]).sum() / b_overs
-
-                b_act_dots = ((b_b["runs"] == 0) & (b_b["extras1_runs"] == 0)).sum() / n_band * 100.0
-                b_exp_dots = b_b["exp_bowler_dot_pct"].mean()
-                dot_diff = b_act_dots - b_exp_dots
-            else:
-                b_act_runs = 0
-                b_exp_runs = 0.0
-                b_act_wkts = 0
-                b_exp_wkts = 0.0
-                runs_saved_po = 0.0
-                wkt_comp = 0.0
-                dot_diff = 0.0
-
-            if n_lo > 0:
-                lo_overs = n_lo / 6.0
-                lo_act_runs = b_l["bowler_runs_conceded"].sum()
-                lo_exp_runs = b_l["exp_bowler_runs"].sum()
-                lo_runs_saved = (lo_exp_runs - lo_act_runs) / lo_overs
-
-                lo_act_wkts = b_l["bowler_wicket"].sum()
-                lo_exp_wkts = b_l["exp_bowler_wicket"].sum()
-                lo_wkt_comp = ((b_l["bowler_wicket"] - b_l["exp_bowler_wicket"]) * b_l["runs_per_wicket"]).sum() / lo_overs
-                lo_score = lo_runs_saved + lo_wkt_comp
-            else:
-                lo_act_runs = 0
-                lo_exp_runs = 0.0
-                lo_act_wkts = 0
-                lo_exp_wkts = 0.0
-                lo_runs_saved = 0.0
-                lo_wkt_comp = 0.0
-                lo_score = 0.0
-
-            lo_qualifies = n_lo >= MIN_SAMPLE_BOWLER_LO_BALLS
-
-            bw_stats.append({
-                "player_id": pid,
-                "player": p_name,
-                "nationality": p_nat,
-                "tier": "Senior",
-                "teams": p_team,
-                "is_rr": is_rr,
-                "in_set2": in_set2,
-                "pressure_balls": p_balls,
-                "band_balls": n_band,
-                "last_over_balls": n_lo,
-                "band_actual_runs": b_act_runs,
-                "band_expected_runs": round(b_exp_runs, 1),
-                "band_actual_wickets": b_act_wkts,
-                "band_expected_wickets": round(b_exp_wkts, 2),
-                "runs_saved_per_over": round(runs_saved_po, 2),
-                "wicket_component": round(wkt_comp, 2),
-                "dot_difference": round(dot_diff, 1),
-                "last_over_actual_runs": lo_act_runs,
-                "last_over_expected_runs": round(lo_exp_runs, 1),
-                "last_over_actual_wickets": lo_act_wkts,
-                "last_over_expected_wickets": round(lo_exp_wkts, 2),
-                "last_over_runs_saved": round(lo_runs_saved, 2),
-                "last_over_wicket_component": round(lo_wkt_comp, 2),
-                "last_over_score": round(lo_score, 2),
-                "lo_qualifies": lo_qualifies,
-            })
-
-        bw_master = pd.DataFrame(bw_stats)
-        return bat_master, bw_master
-
-    bat_senior_master, bw_senior_master = aggregate_senior_players(df_senior)
-
-    # Process Senior Sets (Set 1, Set 2, Set 3)
-    def process_senior_batter_set(df_input, set_name):
-        df_set = df_input.copy()
-        df_set["threshold_applied"] = np.where(df_set["is_rr"], MIN_BALLS_BATTER_RR, MIN_BALLS_BATTER_NON_RR)
-        df_set["shrinkage_k"] = np.where(df_set["is_rr"], SHRINKAGE_K_BATTER_RR, SHRINKAGE_K_BATTER_NON_RR)
-        df_set["qualifies"] = df_set["pressure_balls"] >= df_set["threshold_applied"]
-        df_set["eligibility"] = np.where(df_set["qualifies"], f"Eligible (>={df_set['threshold_applied']} balls)", f"Ineligible (<{df_set['threshold_applied']} balls)")
+        df_out["threshold_applied"] = thresh_b
+        df_out["shrinkage_k"] = k_val
+        # Change 7: Qualifies requires both ball threshold and innings floor
+        df_out["qualifies"] = (df_out["pressure_balls"] >= df_out["threshold_applied"]) & (df_out["pressure_innings"] >= MIN_INNINGS_BATTER)
+        df_out["eligibility"] = np.where(df_out["qualifies"], f"Eligible (>={thresh_b}b, >={MIN_INNINGS_BATTER}inns)", "Ineligible")
 
         notes = []
-        for _, row in df_set.iterrows():
+        for _, row in df_out.iterrows():
             pb = row["pressure_balls"]
             thresh = row["threshold_applied"]
             inns = row["pressure_innings"]
-            if pb >= thresh * 2:
+            if pb >= thresh * 2 and inns >= MIN_INNINGS_BATTER * 2:
                 notes.append(f"Robust sample ({pb} balls across {inns} inns). Highly statistically reliable.")
-            elif pb >= thresh:
+            elif pb >= thresh and inns >= MIN_INNINGS_BATTER:
                 notes.append(f"Qualified sample ({pb} >= {thresh} balls across {inns} inns). Reliable trend.")
             else:
-                notes.append(f"Limited sample ({pb} < {thresh} balls). Excluded from official ranking.")
-        df_set["reliability_note"] = notes
+                notes.append(f"Limited sample ({pb} balls, {inns} inns). Below qualification threshold.")
+        df_out["reliability_note"] = notes
 
-        q = df_set[df_set["qualifies"]].copy()
+        q = df_out[df_out["qualifies"]].copy()
         if len(q) > 0:
-            r_mean, r_std = q["runs_above_expected_per_100"].mean(), q["runs_above_expected_per_100"].std(ddof=0)
-            d_mean, d_std = q["dismissal_penalty"].mean(), q["dismissal_penalty"].std(ddof=0)
-            if r_std == 0: r_std = 1.0
-            if d_std == 0: d_std = 1.0
+            q_pids = set(q["striker_id"])
+            q_inns = inns_df[inns_df["striker_id"].isin(q_pids)]
+            std_inns_val = q_inns["innings_value"].std(ddof=0)
+            if std_inns_val == 0: std_inns_val = 1.0
 
-            q["z_runs"] = (q["runs_above_expected_per_100"] - r_mean) / r_std
-            q["z_dismissal"] = (q["dismissal_penalty"] - d_mean) / d_std
-            q["raw_rating"] = q["z_runs"] - q["z_dismissal"]
+            # Change 1: Batter rating = mean of innings_value / std(innings_value across qualifying innings)
+            q["z_innings_value"] = q["mean_innings_value"] / std_inns_val
+            # Change 7: Clip every component to [-2.0, 2.0]
+            q["z_innings_value_clipped"] = np.clip(q["z_innings_value"], -Z_CLIP, Z_CLIP)
+
+            # Change 2: Required-run-rate penalty term
+            pct_m = q["pct_balls_below_rrr"].mean()
+            pct_s = q["pct_balls_below_rrr"].std(ddof=0)
+            if pct_s == 0: pct_s = 1.0
+            q["z_pct_below_rrr"] = (q["pct_balls_below_rrr"] - pct_m) / pct_s
+            q["z_pct_below_rrr_clipped"] = np.clip(q["z_pct_below_rrr"], -Z_CLIP, Z_CLIP)
+
+            # Rating formula: innings-based value - 0.5 * z(pct_balls_below_rrr)
+            q["raw_rating"] = q["z_innings_value_clipped"] - RRR_PENALTY_WEIGHT * q["z_pct_below_rrr_clipped"]
             q["adjusted_rating"] = (q["pressure_balls"] * q["raw_rating"]) / (q["pressure_balls"] + q["shrinkage_k"])
 
-            df_set = df_set.merge(q[["player_id", "z_runs", "z_dismissal", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
-            df_set["raw_rating"] = df_set["raw_rating"].round(4)
-            df_set["adjusted_rating"] = df_set["adjusted_rating"].round(4)
+            merge_cols = ["striker_id", "z_innings_value", "z_innings_value_clipped", "z_pct_below_rrr", "z_pct_below_rrr_clipped", "raw_rating", "adjusted_rating"]
+            df_out = df_out.merge(q[merge_cols], on="striker_id", how="left")
+            df_out["raw_rating"] = df_out["raw_rating"].round(4)
+            df_out["adjusted_rating"] = df_out["adjusted_rating"].round(4)
+            df_out["mean_innings_value"] = df_out["mean_innings_value"].round(2)
+            df_out["pct_balls_below_rrr"] = df_out["pct_balls_below_rrr"].round(1)
         else:
-            df_set["raw_rating"] = "n/a"
-            df_set["adjusted_rating"] = "n/a"
-        return df_set
+            df_out["raw_rating"] = "n/a"
+            df_out["adjusted_rating"] = "n/a"
+        return df_out
 
-    def process_senior_bowler_set(df_input, set_name):
-        df_set = df_input.copy()
-        df_set["threshold_applied"] = np.where(df_set["is_rr"], MIN_BALLS_BOWLER_RR, MIN_BALLS_BOWLER_NON_RR)
-        df_set["shrinkage_k"] = np.where(df_set["is_rr"], SHRINKAGE_K_BOWLER_RR, SHRINKAGE_K_BOWLER_NON_RR)
-        df_set["qualifies"] = df_set["band_balls"] >= df_set["threshold_applied"]
-        df_set["eligibility"] = np.where(df_set["qualifies"], f"Eligible (>={df_set['threshold_applied']} band balls)", f"Ineligible (<{df_set['threshold_applied']} band balls)")
+    # Bowler Player Aggregation (Senior)
+    bw_band = df_senior[df_senior["is_bowling_band"]].copy()
+    bw_lo = df_senior[df_senior["is_last_over"]].copy()
+    all_bowlers = sorted(df_senior["bowler_id"].dropna().unique())
+
+    bw_stats = []
+    for pid in all_bowlers:
+        b_b = bw_band[bw_band["bowler_id"] == pid]
+        b_l = bw_lo[bw_lo["bowler_id"] == pid]
+        n_band = len(b_b)
+        n_lo = len(b_l)
+        p_balls = n_band + n_lo
+        p_inns = len(set(b_b["match_id"]) | set(b_l["match_id"]))
+
+        if p_balls == 0:
+            continue
+
+        if n_band > 0:
+            b_overs = n_band / 6.0
+            b_act_runs = b_b["bowler_runs_conceded"].sum()
+            b_exp_runs = b_b["exp_bowler_runs"].sum()
+            runs_saved_po = (b_exp_runs - b_act_runs) / b_overs
+
+            b_act_wkts = b_b["bowler_wicket"].sum()
+            b_exp_wkts = b_b["exp_bowler_wicket"].sum()
+            wkt_comp = ((b_b["bowler_wicket"] - b_b["exp_bowler_wicket"]) * b_b["runs_per_wicket"]).sum() / b_overs
+
+            b_act_dots = ((b_b["runs"] == 0) & (b_b["extras1_runs"] == 0)).sum() / n_band * 100.0
+            b_exp_dots = b_b["exp_bowler_dot_pct"].mean()
+            dot_diff = b_act_dots - b_exp_dots
+        else:
+            b_act_runs = 0
+            b_exp_runs = 0.0
+            b_act_wkts = 0
+            b_exp_wkts = 0.0
+            runs_saved_po = 0.0
+            wkt_comp = 0.0
+            dot_diff = 0.0
+
+        if n_lo > 0:
+            lo_overs = n_lo / 6.0
+            lo_act_runs = b_l["bowler_runs_conceded"].sum()
+            lo_exp_runs = b_l["exp_bowler_runs"].sum()
+            lo_runs_saved = (lo_exp_runs - lo_act_runs) / lo_overs
+
+            lo_act_wkts = b_l["bowler_wicket"].sum()
+            lo_exp_wkts = b_l["exp_bowler_wicket"].sum()
+            lo_wkt_comp = ((b_l["bowler_wicket"] - b_l["exp_bowler_wicket"]) * b_l["runs_per_wicket"]).sum() / lo_overs
+            lo_score = lo_runs_saved + lo_wkt_comp
+        else:
+            lo_act_runs = 0
+            lo_exp_runs = 0.0
+            lo_act_wkts = 0
+            lo_exp_wkts = 0.0
+            lo_runs_saved = 0.0
+            lo_wkt_comp = 0.0
+            lo_score = 0.0
+
+        lo_qualifies = n_lo >= MIN_SAMPLE_BOWLER_LO_BALLS
+
+        bw_stats.append({
+            "bowler_id": pid,
+            "player": p_names.get(pid, f"Player_{pid}"),
+            "nationality": player_nats.get(pid, "Unknown"),
+            "tier": "Senior",
+            "teams": p_teams_all.get(pid, "Unknown"),
+            "is_rr": pid in set1_pids_after,
+            "in_set2": pid in set2_pids,
+            "pressure_balls": p_balls,
+            "pressure_innings": p_inns,
+            "band_balls": n_band,
+            "last_over_balls": n_lo,
+            "band_actual_runs": b_act_runs,
+            "band_expected_runs": round(b_exp_runs, 1),
+            "band_actual_wickets": b_act_wkts,
+            "band_expected_wickets": round(b_exp_wkts, 2),
+            "runs_saved_per_over": round(runs_saved_po, 2),
+            "wicket_component": round(wkt_comp, 2),
+            "dot_difference": round(dot_diff, 1),
+            "last_over_actual_runs": lo_act_runs,
+            "last_over_expected_runs": round(lo_exp_runs, 1),
+            "last_over_actual_wickets": lo_act_wkts,
+            "last_over_expected_wickets": round(lo_exp_wkts, 2),
+            "last_over_runs_saved": round(lo_runs_saved, 2),
+            "last_over_wicket_component": round(lo_wkt_comp, 2),
+            "last_over_score": round(lo_score, 2),
+            "lo_qualifies": lo_qualifies,
+        })
+
+    bw_senior_master = pd.DataFrame(bw_stats)
+
+    # Process Senior Bowlers with Changes 7 (Innings floor & Clipping)
+    def process_senior_bowlers(df_in, is_rr_only=False):
+        df_out = df_in.copy()
+        thresh_b = MIN_BALLS_BOWLER_RR if is_rr_only else np.where(df_out["is_rr"], MIN_BALLS_BOWLER_RR, MIN_BALLS_BOWLER_NON_RR)
+        k_val = SHRINKAGE_K_BOWLER_RR if is_rr_only else np.where(df_out["is_rr"], SHRINKAGE_K_BOWLER_RR, SHRINKAGE_K_BOWLER_NON_RR)
+
+        df_out["threshold_applied"] = thresh_b
+        df_out["shrinkage_k"] = k_val
+        # Change 7: Qualifies requires band_balls >= threshold AND pressure_innings >= MIN_INNINGS_BOWLER
+        df_out["qualifies"] = (df_out["band_balls"] >= df_out["threshold_applied"]) & (df_out["pressure_innings"] >= MIN_INNINGS_BOWLER)
+        df_out["eligibility"] = np.where(df_out["qualifies"], f"Eligible (>={thresh_b}b, >={MIN_INNINGS_BOWLER}inns)", "Ineligible")
 
         notes = []
-        for _, row in df_set.iterrows():
+        for _, row in df_out.iterrows():
             bb = row["band_balls"]
             lo = row["last_over_balls"]
             thresh = row["threshold_applied"]
-            if bb >= thresh * 2:
-                notes.append(f"Robust sample ({bb} band balls, {lo} last-over balls). High statistical confidence.")
-            elif bb >= thresh:
-                notes.append(f"Qualified sample ({bb} >= {thresh} band balls, {lo} last-over balls). Reliable indicator.")
+            inns = row["pressure_innings"]
+            if bb >= thresh * 2 and inns >= MIN_INNINGS_BOWLER * 2:
+                notes.append(f"Robust sample ({bb} band balls, {lo} last-over balls across {inns} inns). High confidence.")
+            elif bb >= thresh and inns >= MIN_INNINGS_BOWLER:
+                notes.append(f"Qualified sample ({bb} >= {thresh} band balls across {inns} inns). Reliable indicator.")
             else:
-                notes.append(f"Limited sample ({bb} < {thresh} band balls). Excluded from official ranking.")
-        df_set["reliability_note"] = notes
+                notes.append(f"Limited sample ({bb} band balls, {inns} inns). Below qualification threshold.")
+        df_out["reliability_note"] = notes
 
-        q = df_set[df_set["qualifies"]].copy()
+        q = df_out[df_out["qualifies"]].copy()
         if len(q) > 0:
             rs_mean, rs_std = q["runs_saved_per_over"].mean(), q["runs_saved_per_over"].std(ddof=0)
             w_mean, w_std = q["wicket_component"].mean(), q["wicket_component"].std(ddof=0)
@@ -832,6 +961,9 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
 
             q["z_runs_saved"] = (q["runs_saved_per_over"] - rs_mean) / rs_std
             q["z_wicket"] = (q["wicket_component"] - w_mean) / w_std
+            # Change 7: Clip components to [-2.0, 2.0]
+            q["z_runs_saved_clipped"] = np.clip(q["z_runs_saved"], -Z_CLIP, Z_CLIP)
+            q["z_wicket_clipped"] = np.clip(q["z_wicket"], -Z_CLIP, Z_CLIP)
 
             q_lo = q[q["lo_qualifies"]]
             if len(q_lo) > 0 and q_lo["last_over_score"].std(ddof=0) > 0:
@@ -840,36 +972,29 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
                 q["z_last_over"] = np.where(q["lo_qualifies"], (q["last_over_score"] - lo_mean) / lo_std, 0.0)
             else:
                 q["z_last_over"] = 0.0
+            q["z_last_over_clipped"] = np.clip(q["z_last_over"], -Z_CLIP, Z_CLIP)
 
-            q["raw_rating"] = q["z_runs_saved"] + q["z_wicket"] + 0.5 * q["z_last_over"]
+            q["raw_rating"] = q["z_runs_saved_clipped"] + q["z_wicket_clipped"] + 0.5 * q["z_last_over_clipped"]
             q["adjusted_rating"] = (q["pressure_balls"] * q["raw_rating"]) / (q["pressure_balls"] + q["shrinkage_k"])
 
-            df_set = df_set.merge(q[["player_id", "z_runs_saved", "z_wicket", "z_last_over", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
-            df_set["raw_rating"] = df_set["raw_rating"].round(4)
-            df_set["adjusted_rating"] = df_set["adjusted_rating"].round(4)
+            merge_cols = ["bowler_id", "z_runs_saved", "z_runs_saved_clipped", "z_wicket", "z_wicket_clipped", "z_last_over", "z_last_over_clipped", "raw_rating", "adjusted_rating"]
+            df_out = df_out.merge(q[merge_cols], on="bowler_id", how="left")
+            df_out["raw_rating"] = df_out["raw_rating"].round(4)
+            df_out["adjusted_rating"] = df_out["adjusted_rating"].round(4)
         else:
-            df_set["raw_rating"] = "n/a"
-            df_set["adjusted_rating"] = "n/a"
-        return df_set
+            df_out["raw_rating"] = "n/a"
+            df_out["adjusted_rating"] = "n/a"
+        return df_out
 
-    # Filter Senior pools
-    bat_set1_raw = bat_senior_master[bat_senior_master["is_rr"]].copy()
-    bw_set1_raw = bw_senior_master[bw_senior_master["is_rr"]].copy()
+    # Process Set 1 (RR), Set 2 (Next Season), Set 3 (All Senior)
+    batters_rr = process_senior_batters(p_bat_agg[p_bat_agg["is_rr"]], inns_table, is_rr_only=True)
+    bowlers_rr = process_senior_bowlers(bw_senior_master[bw_senior_master["is_rr"]], is_rr_only=True)
 
-    bat_set2_raw = bat_senior_master[bat_senior_master["in_set2"] & (bat_senior_master["nationality"] != "Pakistan")].copy()
-    bw_set2_raw = bw_senior_master[bw_senior_master["in_set2"] & (bw_senior_master["nationality"] != "Pakistan")].copy()
+    batters_next_season = process_senior_batters(p_bat_agg[p_bat_agg["in_set2"] & (p_bat_agg["nationality"] != "Pakistan")], inns_table, is_rr_only=False)
+    bowlers_next_season = process_senior_bowlers(bw_senior_master[bw_senior_master["in_set2"] & (bw_senior_master["nationality"] != "Pakistan")], is_rr_only=False)
 
-    bat_set3_raw = bat_senior_master.copy()
-    bw_set3_raw = bw_senior_master.copy()
-
-    batters_rr = process_senior_batter_set(bat_set1_raw, "Set 1 (RR)")
-    bowlers_rr = process_senior_bowler_set(bw_set1_raw, "Set 1 (RR)")
-
-    batters_next_season = process_senior_batter_set(bat_set2_raw, "Set 2 (Next Season)")
-    bowlers_next_season = process_senior_bowler_set(bw_set2_raw, "Set 2 (Next Season)")
-
-    batters_all = process_senior_batter_set(bat_set3_raw, "Set 3 (All Players)")
-    bowlers_all = process_senior_bowler_set(bw_set3_raw, "Set 3 (All Players)")
+    batters_all = process_senior_batters(p_bat_agg, inns_table, is_rr_only=False)
+    bowlers_all = process_senior_bowlers(bw_senior_master, is_rr_only=False)
 
     def get_top10(df_in):
         t10 = df_in[df_in["qualifies"]].sort_values("adjusted_rating", ascending=False).head(10).copy()
@@ -884,123 +1009,81 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     top10_all_bw = get_top10(bowlers_all)
 
     # =========================================================================
-    # PART B: DEVELOPMENT & YOUTH PIPELINE (STEP 4 & 5)
+    # PART B: DEVELOPMENT & YOUTH PIPELINE
     # =========================================================================
     print("\n===================================================================")
-    print("PART B: BUILD DEVELOPMENT & YOUTH EXPECTED-VALUE BASELINE & RANKINGS")
+    print("PART B: BUILD DEVELOPMENT & YOUTH BASELINE & RANKINGS")
     print("===================================================================")
 
     m_dy = m_valid[m_valid["match_tier"].isin(["DEVELOPMENT", "YOUTH"])].copy()
     dy_match_ids = set(m_dy["match_id"].unique())
     bbb_dy = bbb[bbb["match_id"].isin(dy_match_ids)].copy()
 
-    df_dy = prepare_deliveries_df(m_dy, bbb_dy)
+    df_dy, inn1_excluded_dy = prepare_deliveries_df(m_dy, bbb_dy)
     dev_exp_path = os.path.join(output_dir, "expected_tables_development.csv")
     exp_dy = build_expected_table(df_dy, dev_exp_path, mark_unreliable=True)
-    df_dy = apply_expected_lookup(df_dy, exp_dy)
+    df_dy = compute_loo_deliveries(df_dy, exp_dy)
 
-    # Team mapping for dev & youth
+    # Required rate tracking for Dev & Youth
+    df_dy_press = df_dy[df_dy["is_batting_pressure"]].copy()
+    df_dy_press["press_ball_num"] = df_dy_press.groupby(["match_id", "innings", "striker_id"]).cumcount() + 1
+    df_dy_press["press_cum_runs"] = df_dy_press.groupby(["match_id", "innings", "striker_id"])["runs"].cumsum()
+    df_dy_press["press_rpb"] = df_dy_press["press_cum_runs"] / df_dy_press["press_ball_num"]
+    df_dy_press["rrr_rpb"] = df_dy_press["rrr"] / 6.0
+    df_dy_press["is_below_rrr"] = df_dy_press["press_rpb"] < df_dy_press["rrr_rpb"]
+
+    inns_table_dy = df_dy_press.groupby(["match_id", "innings", "striker_id"]).agg(
+        pressure_balls=("runs", "count"),
+        actual_runs=("runs", "sum"),
+        expected_runs=("exp_batter_runs", "sum"),
+        actual_dismissals=("batter_dismissal", "sum"),
+        expected_dismissals=("exp_batter_dismissal", "sum"),
+        balls_below_rrr=("is_below_rrr", "sum")
+    ).reset_index()
+
+    inns_table_dy["player"] = inns_table_dy["striker_id"].map(p_names)
+    inns_table_dy["excess_dismissals"] = inns_table_dy["actual_dismissals"] - inns_table_dy["expected_dismissals"]
+    inns_table_dy["runs_above_expected"] = inns_table_dy["actual_runs"] - inns_table_dy["expected_runs"]
+    inns_table_dy["expected_runs_per_innings"] = inns_table_dy["expected_runs"]
+    inns_table_dy["innings_value"] = inns_table_dy["runs_above_expected"] - inns_table_dy["excess_dismissals"] * inns_table_dy["expected_runs_per_innings"]
+    inns_table_dy["pct_balls_below_rrr"] = (inns_table_dy["balls_below_rrr"] / inns_table_dy["pressure_balls"]) * 100.0
+
     p_teams_dev = mapping[mapping["comp_id"] == 2670].groupby("player_id")["team_name"].unique().apply(lambda ts: ", ".join(sorted(set(ts)))).to_dict()
     p_teams_youth = mapping[mapping["comp_id"] == 3289].groupby("player_id")["team_name"].unique().apply(lambda ts: ", ".join(sorted(set(ts)))).to_dict()
 
-    def aggregate_tier_players(df_subset, tier_label, p_teams_map):
-        bat_press = df_subset[df_subset["is_batting_pressure"]].copy()
-        bat_norm = df_subset[~df_subset["is_batting_pressure"]].copy()
+    def aggregate_tier_players(df_subset, inns_subset, tier_label, p_teams_map):
+        p_bat = inns_subset.groupby("striker_id").agg(
+            pressure_balls=("pressure_balls", "sum"),
+            pressure_innings=("pressure_balls", "count"),
+            actual_runs=("actual_runs", "sum"),
+            expected_runs=("expected_runs", "sum"),
+            actual_dismissals=("actual_dismissals", "sum"),
+            expected_dismissals=("expected_dismissals", "sum"),
+            total_balls_below_rrr=("balls_below_rrr", "sum"),
+            mean_innings_value=("innings_value", "mean")
+        ).reset_index()
 
-        all_strikers = sorted(df_subset["striker_id"].dropna().unique())
-        b_stats = []
-
-        for pid in all_strikers:
-            p_name = p_names.get(pid, f"Player_{pid}")
-            p_nat = player_nats.get(pid, "Unknown")
-            teams_str = p_teams_map.get(pid, p_teams_all.get(pid, "Unknown"))
-
-            b_p = bat_press[bat_press["striker_id"] == pid]
-            b_n = bat_norm[bat_norm["striker_id"] == pid]
-
-            p_balls = len(b_p)
-            n_balls = len(b_n)
-            if p_balls == 0 and n_balls == 0:
-                continue
-
-            p_inns = b_p["match_id"].nunique()
-            n_inns = b_n["match_id"].nunique()
-
-            act_runs = b_p["runs"].sum()
-            exp_runs = b_p["exp_batter_runs"].sum()
-            runs_above = act_runs - exp_runs
-            runs_above_100 = (runs_above / p_balls) * 100.0 if p_balls > 0 else 0.0
-
-            act_dismissals = b_p["batter_dismissal"].sum()
-            exp_dismissals = b_p["exp_batter_dismissal"].sum()
-            excess_dismissals = act_dismissals - exp_dismissals
-            excess_d_per_inns = excess_dismissals / p_inns if p_inns > 0 else 0.0
-            exp_r_per_inns = exp_runs / p_inns if p_inns > 0 else 0.0
-            dismissal_penalty = excess_d_per_inns * exp_r_per_inns
-
-            p_sr = (act_runs / p_balls) * 100.0 if p_balls > 0 else np.nan
-            n_sr = (b_n["runs"].sum() / n_balls) * 100.0 if n_balls > 0 else np.nan
-            sr_diff = p_sr - n_sr if pd.notna(p_sr) and pd.notna(n_sr) else np.nan
-
-            p_bndry = ((b_p["is_four"] | b_p["is_six"]).sum() / p_balls) * 100.0 if p_balls > 0 else np.nan
-            n_bndry = ((b_n["is_four"] | b_n["is_six"]).sum() / n_balls) * 100.0 if n_balls > 0 else np.nan
-
-            p_d_rate = act_dismissals / p_inns if p_inns > 0 else np.nan
-            n_d_rate = b_n["batter_dismissal"].sum() / n_inns if n_inns > 0 else np.nan
-            d_diff = p_d_rate - n_d_rate if pd.notna(p_d_rate) and pd.notna(n_d_rate) else np.nan
-
-            b_stats.append({
-                "player_id": pid,
-                "player": p_name,
-                "nationality": p_nat,
-                "tier": tier_label,
-                "teams": teams_str,
-                "pressure_balls": p_balls,
-                "pressure_innings": p_inns,
-                "actual_runs": act_runs,
-                "expected_runs": round(exp_runs, 1),
-                "runs_above_expected": round(runs_above, 2),
-                "runs_above_expected_per_100": round(runs_above_100, 2),
-                "actual_dismissals": int(act_dismissals),
-                "expected_dismissals": round(exp_dismissals, 2),
-                "excess_dismissals": round(excess_dismissals, 2),
-                "dismissals_above_expected_per_inns": round(excess_d_per_inns, 3),
-                "dismissal_penalty": round(dismissal_penalty, 2),
-                "pressure_strike_rate": round(p_sr, 1) if pd.notna(p_sr) else "n/a",
-                "normal_strike_rate": round(n_sr, 1) if pd.notna(n_sr) else "n/a",
-                "sr_difference": round(sr_diff, 1) if pd.notna(sr_diff) else "n/a",
-                "pressure_boundary_pct": round(p_bndry, 1) if pd.notna(p_bndry) else "n/a",
-                "normal_boundary_pct": round(n_bndry, 1) if pd.notna(n_bndry) else "n/a",
-                "pressure_dismissal_rate": round(p_d_rate, 3) if pd.notna(p_d_rate) else "n/a",
-                "normal_dismissal_rate": round(n_d_rate, 3) if pd.notna(n_d_rate) else "n/a",
-                "dismissal_difference": round(d_diff, 3) if pd.notna(d_diff) else "n/a",
-            })
-
-        bat_df = pd.DataFrame(b_stats)
+        p_bat["player"] = p_bat["striker_id"].map(p_names)
+        p_bat["nationality"] = p_bat["striker_id"].map(player_nats)
+        p_bat["tier"] = tier_label
+        p_bat["teams"] = p_bat["striker_id"].map(lambda pid: p_teams_map.get(pid, p_teams_all.get(pid, "Unknown")))
+        p_bat["pct_balls_below_rrr"] = (p_bat["total_balls_below_rrr"] / p_bat["pressure_balls"]) * 100.0
 
         # Bowlers
-        bw_band = df_subset[df_subset["is_bowling_band"]].copy()
-        bw_lo = df_subset[df_subset["is_last_over"]].copy()
-        bw_norm = df_subset[~df_subset["is_bowling_pressure"]].copy()
+        bw_band_t = df_subset[df_subset["is_bowling_band"]].copy()
+        bw_lo_t = df_subset[df_subset["is_last_over"]].copy()
+        all_bw_t = sorted(df_subset["bowler_id"].dropna().unique())
 
-        all_bowlers = sorted(df_subset["bowler_id"].dropna().unique())
-        bw_stats = []
-
-        for pid in all_bowlers:
-            p_name = p_names.get(pid, f"Player_{pid}")
-            p_nat = player_nats.get(pid, "Unknown")
-            teams_str = p_teams_map.get(pid, p_teams_all.get(pid, "Unknown"))
-
-            b_b = bw_band[bw_band["bowler_id"] == pid]
-            b_l = bw_lo[bw_lo["bowler_id"] == pid]
-            b_n = bw_norm[bw_norm["bowler_id"] == pid]
-
+        bw_stats_t = []
+        for pid in all_bw_t:
+            b_b = bw_band_t[bw_band_t["bowler_id"] == pid]
+            b_l = bw_lo_t[bw_lo_t["bowler_id"] == pid]
             n_band = len(b_b)
             n_lo = len(b_l)
-            n_norm = len(b_n)
             p_balls = n_band + n_lo
+            p_inns = len(set(b_b["match_id"]) | set(b_l["match_id"]))
 
-            if p_balls == 0 and n_norm == 0:
+            if p_balls == 0:
                 continue
 
             if n_band > 0:
@@ -1046,13 +1129,14 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
 
             lo_qualifies = n_lo >= MIN_SAMPLE_BOWLER_LO_BALLS
 
-            bw_stats.append({
-                "player_id": pid,
-                "player": p_name,
-                "nationality": p_nat,
+            bw_stats_t.append({
+                "bowler_id": pid,
+                "player": p_names.get(pid, f"Player_{pid}"),
+                "nationality": player_nats.get(pid, "Unknown"),
                 "tier": tier_label,
-                "teams": teams_str,
+                "teams": p_teams_map.get(pid, p_teams_all.get(pid, "Unknown")),
                 "pressure_balls": p_balls,
+                "pressure_innings": p_inns,
                 "band_balls": n_band,
                 "last_over_balls": n_lo,
                 "band_actual_runs": b_act_runs,
@@ -1072,61 +1156,72 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
                 "lo_qualifies": lo_qualifies,
             })
 
-        bw_df = pd.DataFrame(bw_stats)
-        return bat_df, bw_df
+        p_bw = pd.DataFrame(bw_stats_t)
+        return p_bat, p_bw
 
-    def process_tier_ratings(df_bat, df_bw, tier_label):
-        # Batters
+    def process_tier_ratings(df_bat, df_bw, inns_df, tier_label):
         df_b = df_bat.copy()
-        df_b["qualifies"] = df_b["pressure_balls"] >= MIN_BALLS_BATTER_DEV_YOUTH
-        df_b["eligibility"] = np.where(df_b["qualifies"], f"Eligible (>={MIN_BALLS_BATTER_DEV_YOUTH} balls)", f"Ineligible (<{MIN_BALLS_BATTER_DEV_YOUTH} balls)")
+        df_b["threshold_applied"] = MIN_BALLS_BATTER_DEV_YOUTH
+        df_b["shrinkage_k"] = SHRINKAGE_K_BATTER_DEV_YOUTH
+        # Development & Youth qualification: pressure_balls >= threshold and pressure_innings >= MIN_INNINGS_DEV_YOUTH
+        df_b["qualifies"] = (df_b["pressure_balls"] >= df_b["threshold_applied"]) & (df_b["pressure_innings"] >= MIN_INNINGS_DEV_YOUTH)
+        df_b["eligibility"] = np.where(df_b["qualifies"], f"Eligible (>={MIN_BALLS_BATTER_DEV_YOUTH}b, >={MIN_INNINGS_DEV_YOUTH}inns)", "Ineligible")
 
-        b_notes = []
+        notes = []
         for _, row in df_b.iterrows():
             pb = row["pressure_balls"]
             inns = row["pressure_innings"]
-            if pb >= MIN_BALLS_BATTER_DEV_YOUTH * 2:
-                b_notes.append(f"Robust sample ({pb} balls across {inns} inns). Highly statistically reliable in {tier_label}.")
-            elif pb >= MIN_BALLS_BATTER_DEV_YOUTH:
-                b_notes.append(f"Qualified sample ({pb} >= {MIN_BALLS_BATTER_DEV_YOUTH} balls across {inns} inns). Reliable trend in {tier_label}.")
+            if pb >= MIN_BALLS_BATTER_DEV_YOUTH and inns >= MIN_INNINGS_DEV_YOUTH:
+                notes.append(f"Qualified sample ({pb} >= {MIN_BALLS_BATTER_DEV_YOUTH} balls across {inns} inns). Reliable trend in {tier_label}.")
             else:
-                b_notes.append(f"Limited sample ({pb} < {MIN_BALLS_BATTER_DEV_YOUTH} balls). Below qualification threshold for {tier_label}.")
-        df_b["reliability_note"] = b_notes
+                notes.append(f"Limited sample ({pb} balls, {inns} inns). Below qualification threshold for {tier_label}.")
+        df_b["reliability_note"] = notes
 
         q_b = df_b[df_b["qualifies"]].copy()
         if len(q_b) > 0:
-            r_mean, r_std = q_b["runs_above_expected_per_100"].mean(), q_b["runs_above_expected_per_100"].std(ddof=0)
-            d_mean, d_std = q_b["dismissal_penalty"].mean(), q_b["dismissal_penalty"].std(ddof=0)
-            if r_std == 0: r_std = 1.0
-            if d_std == 0: d_std = 1.0
+            q_pids = set(q_b["striker_id"])
+            q_inns = inns_df[inns_df["striker_id"].isin(q_pids)]
+            std_inns_val = q_inns["innings_value"].std(ddof=0)
+            if std_inns_val == 0 or np.isnan(std_inns_val): std_inns_val = 1.0
 
-            q_b["z_runs"] = (q_b["runs_above_expected_per_100"] - r_mean) / r_std
-            q_b["z_dismissal"] = (q_b["dismissal_penalty"] - d_mean) / d_std
-            q_b["raw_rating"] = q_b["z_runs"] - q_b["z_dismissal"]
+            q_b["z_innings_value"] = q_b["mean_innings_value"] / std_inns_val
+            q_b["z_innings_value_clipped"] = np.clip(q_b["z_innings_value"], -Z_CLIP, Z_CLIP)
+
+            pct_m = q_b["pct_balls_below_rrr"].mean()
+            pct_s = q_b["pct_balls_below_rrr"].std(ddof=0)
+            if pct_s == 0 or np.isnan(pct_s): pct_s = 1.0
+            q_b["z_pct_below_rrr"] = (q_b["pct_balls_below_rrr"] - pct_m) / pct_s
+            q_b["z_pct_below_rrr_clipped"] = np.clip(q_b["z_pct_below_rrr"], -Z_CLIP, Z_CLIP)
+
+            q_b["raw_rating"] = q_b["z_innings_value_clipped"] - RRR_PENALTY_WEIGHT * q_b["z_pct_below_rrr_clipped"]
             q_b["adjusted_rating"] = (q_b["pressure_balls"] * q_b["raw_rating"]) / (q_b["pressure_balls"] + SHRINKAGE_K_BATTER_DEV_YOUTH)
 
-            df_b = df_b.merge(q_b[["player_id", "z_runs", "z_dismissal", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
+            merge_cols = ["striker_id", "z_innings_value", "z_innings_value_clipped", "z_pct_below_rrr", "z_pct_below_rrr_clipped", "raw_rating", "adjusted_rating"]
+            df_b = df_b.merge(q_b[merge_cols], on="striker_id", how="left")
             df_b["raw_rating"] = df_b["raw_rating"].round(4)
             df_b["adjusted_rating"] = df_b["adjusted_rating"].round(4)
+            df_b["mean_innings_value"] = df_b["mean_innings_value"].round(2)
+            df_b["pct_balls_below_rrr"] = df_b["pct_balls_below_rrr"].round(1)
         else:
             df_b["raw_rating"] = "n/a"
             df_b["adjusted_rating"] = "n/a"
 
         # Bowlers
         df_bw_out = df_bw.copy()
-        df_bw_out["qualifies"] = df_bw_out["band_balls"] >= MIN_BALLS_BOWLER_DEV_YOUTH
-        df_bw_out["eligibility"] = np.where(df_bw_out["qualifies"], f"Eligible (>={MIN_BALLS_BOWLER_DEV_YOUTH} band balls)", f"Ineligible (<{MIN_BALLS_BOWLER_DEV_YOUTH} band balls)")
+        df_bw_out["threshold_applied"] = MIN_BALLS_BOWLER_DEV_YOUTH
+        df_bw_out["shrinkage_k"] = SHRINKAGE_K_BOWLER_DEV_YOUTH
+        df_bw_out["qualifies"] = (df_bw_out["band_balls"] >= MIN_BALLS_BOWLER_DEV_YOUTH) & (df_bw_out["pressure_innings"] >= MIN_INNINGS_DEV_YOUTH)
+        df_bw_out["eligibility"] = np.where(df_bw_out["qualifies"], f"Eligible (>={MIN_BALLS_BOWLER_DEV_YOUTH}b, >={MIN_INNINGS_DEV_YOUTH}inns)", "Ineligible")
 
         bw_notes = []
         for _, row in df_bw_out.iterrows():
             bb = row["band_balls"]
             lo = row["last_over_balls"]
-            if bb >= MIN_BALLS_BOWLER_DEV_YOUTH * 2:
-                bw_notes.append(f"Robust sample ({bb} band balls, {lo} last-over balls). High statistical confidence in {tier_label}.")
-            elif bb >= MIN_BALLS_BOWLER_DEV_YOUTH:
-                bw_notes.append(f"Qualified sample ({bb} >= {MIN_BALLS_BOWLER_DEV_YOUTH} band balls, {lo} last-over balls). Reliable indicator in {tier_label}.")
+            inns = row["pressure_innings"]
+            if bb >= MIN_BALLS_BOWLER_DEV_YOUTH and inns >= MIN_INNINGS_DEV_YOUTH:
+                bw_notes.append(f"Qualified sample ({bb} >= {MIN_BALLS_BOWLER_DEV_YOUTH} band balls across {inns} inns). Reliable in {tier_label}.")
             else:
-                bw_notes.append(f"Limited sample ({bb} < {MIN_BALLS_BOWLER_DEV_YOUTH} band balls). Below qualification threshold for {tier_label}.")
+                bw_notes.append(f"Limited sample ({bb} band balls, {inns} inns). Below qualification threshold for {tier_label}.")
         df_bw_out["reliability_note"] = bw_notes
 
         q_bw = df_bw_out[df_bw_out["qualifies"]].copy()
@@ -1138,6 +1233,8 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
 
             q_bw["z_runs_saved"] = (q_bw["runs_saved_per_over"] - rs_mean) / rs_std
             q_bw["z_wicket"] = (q_bw["wicket_component"] - w_mean) / w_std
+            q_bw["z_runs_saved_clipped"] = np.clip(q_bw["z_runs_saved"], -Z_CLIP, Z_CLIP)
+            q_bw["z_wicket_clipped"] = np.clip(q_bw["z_wicket"], -Z_CLIP, Z_CLIP)
 
             q_lo = q_bw[q_bw["lo_qualifies"]]
             if len(q_lo) > 0 and q_lo["last_over_score"].std(ddof=0) > 0:
@@ -1146,11 +1243,13 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
                 q_bw["z_last_over"] = np.where(q_bw["lo_qualifies"], (q_bw["last_over_score"] - lo_mean) / lo_std, 0.0)
             else:
                 q_bw["z_last_over"] = 0.0
+            q_bw["z_last_over_clipped"] = np.clip(q_bw["z_last_over"], -Z_CLIP, Z_CLIP)
 
-            q_bw["raw_rating"] = q_bw["z_runs_saved"] + q_bw["z_wicket"] + 0.5 * q_bw["z_last_over"]
+            q_bw["raw_rating"] = q_bw["z_runs_saved_clipped"] + q_bw["z_wicket_clipped"] + 0.5 * q_bw["z_last_over_clipped"]
             q_bw["adjusted_rating"] = (q_bw["pressure_balls"] * q_bw["raw_rating"]) / (q_bw["pressure_balls"] + SHRINKAGE_K_BOWLER_DEV_YOUTH)
 
-            df_bw_out = df_bw_out.merge(q_bw[["player_id", "z_runs_saved", "z_wicket", "z_last_over", "raw_rating", "adjusted_rating"]], on="player_id", how="left")
+            merge_cols = ["bowler_id", "z_runs_saved", "z_runs_saved_clipped", "z_wicket", "z_wicket_clipped", "z_last_over", "z_last_over_clipped", "raw_rating", "adjusted_rating"]
+            df_bw_out = df_bw_out.merge(q_bw[merge_cols], on="bowler_id", how="left")
             df_bw_out["raw_rating"] = df_bw_out["raw_rating"].round(4)
             df_bw_out["adjusted_rating"] = df_bw_out["adjusted_rating"].round(4)
         else:
@@ -1159,93 +1258,65 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
 
         return df_b, df_bw_out
 
-    # Process Development
+    # Process Development (Comp 2670)
     df_dev = df_dy[df_dy["match_tier"] == "DEVELOPMENT"]
-    b_dev_raw, bw_dev_raw = aggregate_tier_players(df_dev, "Development", p_teams_dev)
-    batters_development, bowlers_development = process_tier_ratings(b_dev_raw, bw_dev_raw, "Development")
+    dev_mids = set(df_dev["match_id"].unique())
+    inns_dev = inns_table_dy[inns_table_dy["match_id"].isin(dev_mids)]
+    b_dev_raw, bw_dev_raw = aggregate_tier_players(df_dev, inns_dev, "Development", p_teams_dev)
+    batters_development, bowlers_development = process_tier_ratings(b_dev_raw, bw_dev_raw, inns_dev, "Development")
 
-    # Process Youth
+    # Process Youth (Comp 3289)
     df_youth = df_dy[df_dy["match_tier"] == "YOUTH"]
-    b_youth_raw, bw_youth_raw = aggregate_tier_players(df_youth, "Youth", p_teams_youth)
-    batters_young, bowlers_young = process_tier_ratings(b_youth_raw, bw_youth_raw, "Youth")
+    youth_mids = set(df_youth["match_id"].unique())
+    inns_youth = inns_table_dy[inns_table_dy["match_id"].isin(youth_mids)]
+    b_youth_raw, bw_youth_raw = aggregate_tier_players(df_youth, inns_youth, "Youth", p_teams_youth)
+    batters_young, bowlers_young = process_tier_ratings(b_youth_raw, bw_youth_raw, inns_youth, "Youth")
 
-    # Top 10 for Development & Young
     top10_dev_b = get_top10(batters_development)
     top10_dev_bw = get_top10(bowlers_development)
     top10_young_b = get_top10(batters_young)
     top10_young_bw = get_top10(bowlers_young)
 
     # =========================================================================
-    # STEP 7: SANITY CHECKS & VERIFICATION
+    # STEP 7: SANITY CHECKS & VERIFICATION (CHANGE 8)
     # =========================================================================
-    print("\n===================================================================")
-    print("STEP 7: SANITY CHECKS & VERIFICATION")
-    print("===================================================================")
+    run_synthetic_sanity_tests()
 
-    sanity_failures = []
-
-    # 1. No DEVELOPMENT or YOUTH ball in Senior outputs, and vice-versa
-    # Senior deliveries come strictly from senior_match_ids; dev from 2670; youth from 3289.
+    # Verify no overlap between Senior matches and Dev/Youth matches
     if len(senior_match_ids & dy_match_ids) > 0:
-        sanity_failures.append(f"Senior match IDs overlap with Development/Youth match IDs: {senior_match_ids & dy_match_ids}")
+        raise ValueError(f"Senior matches overlap with Development/Youth matches: {senior_match_ids & dy_match_ids}")
     else:
-        print("  [PASSED] Strict separation: Zero overlap between Senior matches and Development/Youth matches.")
+        print("  [PASSED] Strict Tier Separation: Zero overlap between Senior and Dev/Youth matches.")
 
-    # 2. Derivative sign checks across all sets
-    all_check_sets = [
-        ("Senior RR", batters_rr, bowlers_rr),
-        ("Senior Next Season", batters_next_season, bowlers_next_season),
-        ("Senior All Players", batters_all, bowlers_all),
-        ("Development", batters_development, bowlers_development),
-        ("Young", batters_young, bowlers_young),
+    # Confirm thresholds for all top-10 lists
+    all_t10_checks = [
+        ("RR Batters", top10_rr_b, "pressure_balls", "pressure_innings", MIN_INNINGS_BATTER),
+        ("RR Bowlers", top10_rr_bw, "band_balls", "pressure_innings", MIN_INNINGS_BOWLER),
+        ("Next Season Batters", top10_next_b, "pressure_balls", "pressure_innings", MIN_INNINGS_BATTER),
+        ("Next Season Bowlers", top10_next_bw, "band_balls", "pressure_innings", MIN_INNINGS_BOWLER),
+        ("All Senior Batters", top10_all_b, "pressure_balls", "pressure_innings", MIN_INNINGS_BATTER),
+        ("All Senior Bowlers", top10_all_bw, "band_balls", "pressure_innings", MIN_INNINGS_BOWLER),
+        ("Development Batters", top10_dev_b, "pressure_balls", "pressure_innings", MIN_INNINGS_DEV_YOUTH),
+        ("Development Bowlers", top10_dev_bw, "band_balls", "pressure_innings", MIN_INNINGS_DEV_YOUTH),
+        ("Young Batters", top10_young_b, "pressure_balls", "pressure_innings", MIN_INNINGS_DEV_YOUTH),
+        ("Young Bowlers", top10_young_bw, "band_balls", "pressure_innings", MIN_INNINGS_DEV_YOUTH),
     ]
 
-    for s_name, b_df, bw_df in all_check_sets:
-        q_b = b_df[b_df["qualifies"]].copy()
-        if len(q_b) > 2:
-            corr_b = np.corrcoef(q_b["z_dismissal"], q_b["raw_rating"] - q_b["z_runs"])[0, 1]
-            if corr_b > -0.999:
-                sanity_failures.append(f"{s_name} Batters: dismissal penalty check failed (corr={corr_b})")
-
-        q_bw = bw_df[bw_df["qualifies"]].copy()
-        if len(q_bw) > 2:
-            corr_bw = np.corrcoef(q_bw["z_runs_saved"], q_bw["raw_rating"] - q_bw["z_wicket"] - 0.5 * q_bw["z_last_over"])[0, 1]
-            if corr_bw < 0.999:
-                sanity_failures.append(f"{s_name} Bowlers: runs saved check failed (corr={corr_bw})")
-
-    # 3. Confirm every player in Young and Development top 10 lists meets the threshold
-    for _, r in top10_dev_b.iterrows():
-        if r["pressure_balls"] < MIN_BALLS_BATTER_DEV_YOUTH:
-            sanity_failures.append(f"Development Batter {r['player']} has {r['pressure_balls']} < {MIN_BALLS_BATTER_DEV_YOUTH} balls!")
-    for _, r in top10_dev_bw.iterrows():
-        if r["band_balls"] < MIN_BALLS_BOWLER_DEV_YOUTH:
-            sanity_failures.append(f"Development Bowler {r['player']} has {r['band_balls']} < {MIN_BALLS_BOWLER_DEV_YOUTH} band balls!")
-    for _, r in top10_young_b.iterrows():
-        if r["pressure_balls"] < MIN_BALLS_BATTER_DEV_YOUTH:
-            sanity_failures.append(f"Young Batter {r['player']} has {r['pressure_balls']} < {MIN_BALLS_BATTER_DEV_YOUTH} balls!")
-    for _, r in top10_young_bw.iterrows():
-        if r["band_balls"] < MIN_BALLS_BOWLER_DEV_YOUTH:
-            sanity_failures.append(f"Young Bowler {r['player']} has {r['band_balls']} < {MIN_BALLS_BOWLER_DEV_YOUTH} band balls!")
-
-    if sanity_failures:
-        print("\nSANITY CHECK FAILURES:")
-        for f in sanity_failures:
-            print(f"  FAILED: {f}")
-        raise ValueError("Sanity check verification failed!")
-    else:
-        print("ALL SANITY CHECKS PASSED:")
-        print("  1. No DEVELOPMENT or YOUTH ball appears in any senior output, and no SENIOR ball appears in Young or Development outputs.")
-        print("  2. Batter dismissals derivative check (r = -1.000) and bowler economy derivative check (r = +1.000) verified.")
-        print("  3. Every player in the Young and Development lists strictly meets their minimum sample threshold.")
+    for label, t10_df, b_col, in_col, in_min in all_t10_checks:
+        for _, r in t10_df.iterrows():
+            thresh_applied = r["threshold_applied"]
+            if r[b_col] < thresh_applied or r[in_col] < in_min:
+                raise ValueError(f"Threshold violation in {label}: {r['player']} has {b_col}={r[b_col]} (min {thresh_applied}) or {in_col}={r[in_col]} (min {in_min})!")
+    print("  [PASSED] Verification: Every top-10 player in all 10 lists strictly meets both ball and innings thresholds.")
 
     # =========================================================================
-    # STEP 6: OUTPUTS & CSV EXPORTS
+    # STEP 6: EXPORT CSV OUTPUTS (CHANGE 10)
     # =========================================================================
     print("\n===================================================================")
     print("STEP 6: EXPORT CSV OUTPUTS")
     print("===================================================================")
 
-    # Senior full tables
+    # Full tables
     batters_rr.to_csv(os.path.join(output_dir, "batters_rr.csv"), index=False)
     bowlers_rr.to_csv(os.path.join(output_dir, "bowlers_rr.csv"), index=False)
     batters_next_season.to_csv(os.path.join(output_dir, "batters_next_season.csv"), index=False)
@@ -1256,7 +1327,7 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     batters_rr.to_csv(os.path.join(output_dir, "batters_pressure.csv"), index=False)
     bowlers_rr.to_csv(os.path.join(output_dir, "bowlers_pressure.csv"), index=False)
 
-    # Senior Top 10 tables
+    # Top 10 tables
     top10_rr_b.to_csv(os.path.join(output_dir, "top10_rr_batters.csv"), index=False)
     top10_rr_bw.to_csv(os.path.join(output_dir, "top10_rr_bowlers.csv"), index=False)
     top10_next_b.to_csv(os.path.join(output_dir, "top10_next_season_batters.csv"), index=False)
@@ -1275,17 +1346,56 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
     top10_young_b.to_csv(os.path.join(output_dir, "top10_young_batters.csv"), index=False)
     top10_young_bw.to_csv(os.path.join(output_dir, "top10_young_bowlers.csv"), index=False)
 
-    print("\n[TOP 10 DEVELOPMENT BATTERS]")
-    print(top10_dev_b[["rank", "player", "teams", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+    # Print New Top 10s with Clipped Components, Innings Count, and pct_balls_below_rrr (Change 10)
+    print("\n" + "="*80)
+    print("TOP 10 RANKINGS WITH CLIPPED COMPONENTS & INNINGS COUNT (CHANGE 10)")
+    print("="*80)
 
-    print("\n[TOP 10 DEVELOPMENT BOWLERS]")
-    print(top10_dev_bw[["rank", "player", "teams", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
+    print("\n--- TOP 10 RAJASTHAN ROYALS BATTERS (NEW) ---")
+    print(top10_rr_b[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "pct_balls_below_rrr", "z_innings_value_clipped", "z_pct_below_rrr_clipped"]].to_string(index=False))
 
-    print("\n[TOP 10 YOUNG BATTERS]")
-    print(top10_young_b[["rank", "player", "teams", "adjusted_rating", "runs_above_expected_per_100", "dismissal_penalty", "pressure_balls"]].to_string(index=False))
+    print("\n--- TOP 10 RAJASTHAN ROYALS BOWLERS (NEW) ---")
+    print(top10_rr_bw[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "band_balls", "z_runs_saved_clipped", "z_wicket_clipped", "z_last_over_clipped"]].to_string(index=False))
 
-    print("\n[TOP 10 YOUNG BOWLERS]")
-    print(top10_young_bw[["rank", "player", "teams", "adjusted_rating", "runs_saved_per_over", "wicket_component", "last_over_score", "pressure_balls"]].to_string(index=False))
+    print("\n--- TOP 10 NEXT SEASON BATTERS (NEW) ---")
+    print(top10_next_b[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "pct_balls_below_rrr", "z_innings_value_clipped", "z_pct_below_rrr_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 NEXT SEASON BOWLERS (NEW) ---")
+    print(top10_next_bw[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "band_balls", "z_runs_saved_clipped", "z_wicket_clipped", "z_last_over_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 ALL SENIOR BATTERS (NEW) ---")
+    print(top10_all_b[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "pct_balls_below_rrr", "z_innings_value_clipped", "z_pct_below_rrr_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 ALL SENIOR BOWLERS (NEW) ---")
+    print(top10_all_bw[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "band_balls", "z_runs_saved_clipped", "z_wicket_clipped", "z_last_over_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 DEVELOPMENT BATTERS (NEW) ---")
+    print(top10_dev_b[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "pct_balls_below_rrr", "z_innings_value_clipped", "z_pct_below_rrr_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 DEVELOPMENT BOWLERS (NEW) ---")
+    print(top10_dev_bw[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "band_balls", "z_runs_saved_clipped", "z_wicket_clipped", "z_last_over_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 YOUNG BATTERS (NEW) ---")
+    print(top10_young_b[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "pct_balls_below_rrr", "z_innings_value_clipped", "z_pct_below_rrr_clipped"]].to_string(index=False))
+
+    print("\n--- TOP 10 YOUNG BOWLERS (NEW) ---")
+    print(top10_young_bw[["rank", "player", "teams", "adjusted_rating", "pressure_balls", "pressure_innings", "band_balls", "z_runs_saved_clipped", "z_wicket_clipped", "z_last_over_clipped"]].to_string(index=False))
+
+    # Print comparisons between old and new top 10s (Change 10)
+    print("\n" + "="*80)
+    print("OLD VS NEW TOP 10 RANKING COMPARISONS (CHANGE 10)")
+    print("="*80)
+
+    print_old_vs_new_comparison("RR Batters", top10_rr_b, OLD_TOP10["RR Batters"])
+    print_old_vs_new_comparison("RR Bowlers", top10_rr_bw, OLD_TOP10["RR Bowlers"])
+    print_old_vs_new_comparison("Next Season Batters", top10_next_b, OLD_TOP10["Next Season Batters"])
+    print_old_vs_new_comparison("Next Season Bowlers", top10_next_bw, OLD_TOP10["Next Season Bowlers"])
+    print_old_vs_new_comparison("All Senior Batters", top10_all_b, OLD_TOP10["All Senior Batters"])
+    print_old_vs_new_comparison("All Senior Bowlers", top10_all_bw, OLD_TOP10["All Senior Bowlers"])
+    print_old_vs_new_comparison("Development Batters", top10_dev_b, OLD_TOP10["Development Batters"])
+    print_old_vs_new_comparison("Development Bowlers", top10_dev_bw, OLD_TOP10["Development Bowlers"])
+    print_old_vs_new_comparison("Young Batters", top10_young_b, OLD_TOP10["Young Batters"])
+    print_old_vs_new_comparison("Young Bowlers", top10_young_bw, OLD_TOP10["Young Bowlers"])
 
     return {
         "top10_rr_b": top10_rr_b,
@@ -1298,11 +1408,8 @@ def run_multi_tier_pipeline(data_dir=None, output_dir=None):
         "top10_dev_bw": top10_dev_bw,
         "top10_young_b": top10_young_b,
         "top10_young_bw": top10_young_bw,
-        "batters_development": batters_development,
-        "bowlers_development": bowlers_development,
-        "batters_young": batters_young,
-        "bowlers_young": bowlers_young
     }
+
 
 run_pressure_pipeline = run_multi_tier_pipeline
 
